@@ -14,10 +14,11 @@ final class ThumbnailCache {
     func forget(_ id: UUID) { images[id] = nil }
 
     func request(_ r: HistoryRecord) {
-        guard images[r.id] == nil, loading.insert(r.id).inserted else { return }
-        let url = r.state == .applied ? r.newURL : r.oldURL
-        let isPDF = r.kind == .pdf
-        let id = r.id
+        request(id: r.id, url: r.state == .applied ? r.newURL : r.oldURL, pdf: r.kind == .pdf)
+    }
+
+    func request(id: UUID, url: URL, pdf isPDF: Bool) {
+        guard images[id] == nil, loading.insert(id).inserted else { return }
         Task.detached(priority: .utility) {
             let img = Self.make(url, pdf: isPDF)
             await MainActor.run { [weak self] in

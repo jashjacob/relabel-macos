@@ -5,13 +5,13 @@ enum IconStyle { case face, scanLine }
 
 /// Draws the menu bar icon as a template image. Face eyes blink while naming and look sleepy when paused.
 enum MenuBarFace {
-    static func image(style: IconStyle, state: IconState, frame: Int) -> NSImage {
+    static func image(style: IconStyle, state: IconState, frame: Int, dragging: Bool = false) -> NSImage {
         let size = NSSize(width: 18, height: 18)
         let img = NSImage(size: size, flipped: false) { rect in
             NSColor.black.setStroke(); NSColor.black.setFill()
             switch style {
-            case .face: drawFace(rect, state, frame)
-            case .scanLine: drawScan(rect, state, frame)
+            case .face: drawFace(rect, state, frame, dragging)
+            case .scanLine: drawScan(rect, state, frame, dragging)
             }
             return true
         }
@@ -19,7 +19,7 @@ enum MenuBarFace {
         return img
     }
 
-    private static func drawFace(_ r: NSRect, _ state: IconState, _ frame: Int) {
+    private static func drawFace(_ r: NSRect, _ state: IconState, _ frame: Int, _ dragging: Bool) {
         let body = NSBezierPath(roundedRect: r.insetBy(dx: 2, dy: 2.5), xRadius: 4.5, yRadius: 4.5)
         body.lineWidth = 1.5; body.stroke()
         let eyeY = r.midY + 1.2
@@ -36,7 +36,7 @@ enum MenuBarFace {
                 p.lineWidth = 1.2; p.lineCapStyle = .round; p.stroke()
             default:
                 let h: CGFloat = blink ? 0.8 : 3
-                let shift: CGFloat = state == .naming ? CGFloat((frame % 4) - 1) * 0.5 : 0
+                let shift: CGFloat = dragging ? -1.2 : (state == .naming ? CGFloat((frame % 4) - 1) * 0.5 : 0)   // looks toward a dragged file
                 NSBezierPath(ovalIn: NSRect(x: x - 1.1 + shift, y: eyeY - h / 2, width: 2.2, height: h)).fill()
             }
         }
@@ -45,13 +45,13 @@ enum MenuBarFace {
         mouth.lineWidth = 1.2; mouth.lineCapStyle = .round; mouth.stroke()
     }
 
-    private static func drawScan(_ r: NSRect, _ state: IconState, _ frame: Int) {
+    private static func drawScan(_ r: NSRect, _ state: IconState, _ frame: Int, _ dragging: Bool) {
         let frameRect = NSBezierPath(roundedRect: r.insetBy(dx: 2.5, dy: 2.5), xRadius: 2.5, yRadius: 2.5)
-        frameRect.lineWidth = 1.5; frameRect.stroke()
+        frameRect.lineWidth = dragging ? 2.4 : 1.5; frameRect.stroke()
         var y = r.midY
         if state == .naming { y = r.minY + 4.5 + CGFloat(frame % 6) * 1.8 }
         let line = NSBezierPath(); line.move(to: NSPoint(x: 5, y: y)); line.line(to: NSPoint(x: r.maxX - 5, y: y))
-        line.lineWidth = 1.5; line.lineCapStyle = .round
+        line.lineWidth = dragging ? 2.6 : 1.5; line.lineCapStyle = .round
         if state == .paused { line.setLineDash([2, 2], count: 2, phase: 0) }
         line.stroke()
         if state == .error {

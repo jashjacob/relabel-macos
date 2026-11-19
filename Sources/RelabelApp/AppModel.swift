@@ -34,6 +34,8 @@ final class AppModel {
     /// Set by the app delegate so views can open windows.
     var openSettings: () -> Void = {}
     var openWelcome: () -> Void = {}
+    var openTidyWindow: () -> Void = {}
+    @ObservationIgnored private(set) lazy var tidy = TidyModel(app: self)
     var closePanel: () -> Void = {}
 
     private var notifiedLost: Set<UUID> = []
@@ -133,6 +135,41 @@ final class AppModel {
     func undo(_ r: HistoryRecord) -> String? {
         defer { reloadHistory() }
         do { try engine.history.undo(id: r.id); return nil } catch { return error.localizedDescription }
+    }
+
+    // MARK: Tidy Up and drops
+
+    func historyChanged() { reloadHistory() }
+
+    func startTidyUp() {
+        closePanel()
+        guard let url = FolderPicker.choose(message: "Choose a folder to tidy up",
+                                            startingAt: screenshotsFolder?.url ?? SuggestedFolders.downloads()) else { return }
+        openTidy(url)
+    }
+
+    func openTidy(_ folder: URL) {
+        tidy.open(folder: folder)
+        openTidyWindow()
+    }
+
+    /// Files dropped on the panel, the menu bar icon, the app icon, or "Open With". Folders are tidied.
+    func handleDrop(_ urls: [URL]) {
+        isDraggingFile = false
+        var rejected = 0
+        var folder: URL?
+        for u in urls {
+            var isDir: ObjCBool = false
+            guard FileManager.default.fileExists(atPath: u.path, isDirectory: &isDir) else { continue }
+            if isDir.boolValue { folder = folder ?? u; continue }
+            if let kind = FileEligibility.kindForDropped(u) {
+                engine.enqueue(RenameJob(url: u, kind: kind, source: .drop))
+            } else {
+                rejected += 1
+            }
+        }
+        if let folder { closePanel(); openTidy(folder) }
+        if rejected > 0 { pill.showMessage("Relabel can name images and PDFs. \(rejected == 1 ? "That file was" : "\(rejected) files were") skipped.") }
     }
 
     // MARK: Recent renames rows

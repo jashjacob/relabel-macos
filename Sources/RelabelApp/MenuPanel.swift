@@ -99,7 +99,7 @@ struct MenuPanelView: View {
             dropArea
 
             HStack {
-                Button("Tidy Up a Folder") {}.disabled(true)
+                Button("Tidy Up a Folder") { model.startTidyUp() }
                 Spacer()
                 Button(model.isPaused ? "Resume" : "Pause") { model.togglePause() }
             }
@@ -119,6 +119,7 @@ struct MenuPanelView: View {
         .padding(16)
         .frame(width: 340)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .modifier(MenuDuringFileDrag(model: model))
     }
 
     private func closeAndOpenSettings() {
@@ -145,4 +146,40 @@ struct MenuPanelView: View {
         case .error: .red
         }
     }
+}
+
+/// Highlights the whole panel while a file is dragged over it, and accepts the drop anywhere on it.
+struct MenuDuringFileDrag: ViewModifier {
+    let model: AppModel
+    func body(content: Content) -> some View {
+        content
+            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.accentColor, lineWidth: model.isDraggingFile ? 2.5 : 0))
+            .onDrop(of: [.fileURL], isTargeted: Bindable(model).isDraggingFile) { providers in
+                DropLoader.urls(from: providers) { model.handleDrop($0) }
+                return true
+            }
+    }
+}
+
+enum DropLoader {
+    @MainActor
+    static func urls(from providers: [NSItemProvider], completion: @escaping @MainActor ([URL]) -> Void) {
+        let box = URLBox()
+        let group = DispatchGroup()
+        for p in providers where p.hasItemConformingToTypeIdentifier("public.file-url") {
+            group.enter()
+            p.loadItem(forTypeIdentifier: "public.file-url") { item, _ in
+                if let d = item as? Data, let u = URL(dataRepresentation: d, relativeTo: nil) { box.add(u) }
+                else if let u = item as? URL { box.add(u) }
+                group.leave()
+            }
+        }
+        group.notify(queue: .main) { MainActor.assumeIsolated { completion(box.urls) } }
+    }
+}
+
+private final class URLBox: @unchecked Sendable {
+    private let lock = NSLock(); private var v: [URL] = []
+    func add(_ u: URL) { lock.withLock { v.append(u) } }
+    var urls: [URL] { lock.withLock { v } }
 }
