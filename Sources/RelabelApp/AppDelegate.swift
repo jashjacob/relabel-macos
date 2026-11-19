@@ -8,7 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var panel: MenuPanelController!
     private var timer: Timer?
-    private var style: IconStyle = .face
+    private var style: IconStyle = .scanLine   // generic for now; the face is an optional style later
     private var settingsWindow: SingleWindow!
     private var welcomeWindow: SingleWindow!
     private static let welcomeKey = "welcomeCompleted"
@@ -41,7 +41,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         // Dev hook: RELABEL_STATE=naming|paused|error previews icon states; RELABEL_STYLE=scan.
         let env = ProcessInfo.processInfo.environment
-        if env["RELABEL_STYLE"] == "scan" { style = .scanLine }
+        if env["RELABEL_STYLE"] == "face" { style = .face }
         if !UserDefaults.standard.bool(forKey: Self.welcomeKey) || env["RELABEL_WELCOME"] == "1" {
             DispatchQueue.main.async { [self] in welcomeWindow.show() }
         }

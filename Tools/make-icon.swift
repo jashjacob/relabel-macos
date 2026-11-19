@@ -9,9 +9,16 @@ func render(_ px: Int) -> Data {
         NSGradient(colors: [NSColor(calibratedRed: 0.36, green: 0.55, blue: 1, alpha: 1),
                             NSColor(calibratedRed: 0.42, green: 0.30, blue: 0.95, alpha: 1)])!.draw(in: bg, angle: -60)
         NSColor.white.setFill(); NSColor.white.setStroke()
-        for x in [0.36, 0.64] { NSBezierPath(ovalIn: NSRect(x: s*(x-0.05), y: s*0.52, width: s*0.10, height: s*0.16)).fill() }
-        let m = NSBezierPath(); m.move(to: NSPoint(x: s*0.38, y: s*0.36)); m.line(to: NSPoint(x: s*0.62, y: s*0.36))
-        m.lineWidth = s*0.04; m.lineCapStyle = .round; m.stroke()
+        // Generic "document being scanned" glyph.
+        let page = NSBezierPath(roundedRect: NSRect(x: s*0.30, y: s*0.22, width: s*0.40, height: s*0.56), xRadius: s*0.04, yRadius: s*0.04)
+        page.fill()
+        NSColor(calibratedRed: 0.42, green: 0.30, blue: 0.95, alpha: 0.55).setFill()
+        for (i, w) in [0.26, 0.26, 0.16].enumerated() {
+            NSBezierPath(roundedRect: NSRect(x: s*0.36, y: s*(0.64 - 0.09*CGFloat(i)), width: s*w, height: s*0.03), xRadius: s*0.015, yRadius: s*0.015).fill()
+        }
+        NSColor.white.setStroke()
+        let scan = NSBezierPath(); scan.move(to: NSPoint(x: s*0.22, y: s*0.40)); scan.line(to: NSPoint(x: s*0.78, y: s*0.40))
+        scan.lineWidth = s*0.035; scan.lineCapStyle = .round; scan.stroke()
         return true
     }
     let rep = NSBitmapImageRep(data: img.tiffRepresentation!)!
