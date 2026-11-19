@@ -65,7 +65,7 @@ final class TidyModel {
         let include = includeGood
         guard snapshot.contains(where: { (include || !$0.alreadyGood) && $0.status != .ready }) else { phase = .ready; return }
         phase = .naming(done: 0, total: snapshot.filter { include || !$0.alreadyGood }.count)
-        let pipeline = NamingPipeline(history: app.engine.history, markers: app.engine.markers, prefs: { prefs })
+        let pipeline = NamingPipeline(history: app.engine.history, markers: app.engine.markers, prefs: { prefs }, learning: app.engine.learning)
         let sink: @Sendable (Int, TidyItem, Int, Int) -> Void = { [weak self] i, item, done, total in
             Task { @MainActor in self?.applyUpdate(i, item, done, total) }
         }

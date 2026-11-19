@@ -93,7 +93,7 @@ public enum NamingModel {
         ctx.image == nil ? "" : "A picture of it is attached. Use the picture to see what app, website, brand or document it is and what it is about. Use the text for exact names and numbers.\n"
     }
 
-    public static func prompt(for ctx: FileContext, prefs: NamingPreferences, examples: [String] = []) -> String {
+    public static func prompt(for ctx: FileContext, prefs: NamingPreferences, examples: [String] = [], styleHint: String? = nil) -> String {
         var p = "Name this \(ctx.kind == .pdf ? "PDF" : "screenshot").\n\(imageHint(ctx))Length: \(prefs.length.instruction)\n\(example(for: prefs.length))\n"
         if ctx.kind == .screenshot {
             if let app = ctx.appName { p += "Frontmost app when captured: \(app)\n" }
@@ -107,14 +107,15 @@ public enum NamingModel {
             if !custom.isEmpty { p += "Extra instruction from the user: \(custom)\n" }
         }
         if !examples.isEmpty {
-            p += "Names this user chose before for similar files:\n" + examples.map { "- \($0)" }.joined(separator: "\n") + "\n"
+            p += "Corrections this user made to earlier names for similar files. Follow their style:\n" + examples.map { "- \($0)" }.joined(separator: "\n") + "\n"
         }
+        if let styleHint { p += "The user's usual naming style: \(styleHint). Follow it unless the text clearly needs more.\n" }
         p += "\nText on the \(ctx.kind == .pdf ? "first pages" : "screen"), top to bottom:\n\(ctx.promptText())"
         return p
     }
 
     /// Names a file with the on-device model. Falls back to basic naming (and says why in `note`).
-    public static func name(for ctx: FileContext, prefs: NamingPreferences, examples: [String] = [],
+    public static func name(for ctx: FileContext, prefs: NamingPreferences, examples: [String] = [], styleHint: String? = nil,
                             useModel: Bool = true, forceTextOnly: Bool = false) async -> (result: NamingResult, note: String?) {
         let basic = BasicNamer.name(for: ctx, prefs: prefs)
         guard useModel else { return (basic, "Model skipped") }
@@ -125,7 +126,7 @@ public enum NamingModel {
         do {
             var c = ctx
             if !withImage { c.image = nil }
-            let text = prompt(for: c, prefs: prefs, examples: examples)
+            let text = prompt(for: c, prefs: prefs, examples: examples, styleHint: styleHint)
             let session = LanguageModelSession(instructions: rules)
             let full: Prompt
             if let img = c.image { full = Prompt { text; Attachment(img.image) } } else { full = Prompt { text } }

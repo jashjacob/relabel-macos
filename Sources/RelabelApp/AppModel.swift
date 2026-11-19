@@ -30,6 +30,9 @@ final class AppModel {
     private(set) var launchAtLogin = false
     var loginMessage: String?
     var settingsTab = 0
+    private(set) var learned: [Correction] = []
+    var showLearned = false
+    var confirmForget = false
     enum HoldReason { case lowPower, hot }
     var prefs = NamingPreferences() {
         didSet {
@@ -63,6 +66,7 @@ final class AppModel {
         pill.onUndo = { [weak self] r in self?.undo(r) }
         pill.onRetry = { [weak self] job in self?.engine.enqueue(job) }
         reloadHistory()
+        learned = engine.learning.all
         refreshAI()
         launchAtLogin = SMAppService.mainApp.status == .enabled
         let nc = NotificationCenter.default
@@ -235,6 +239,45 @@ final class AppModel {
         if rejected > 0 { pill.showMessage("Relabel can name images and PDFs. \(rejected == 1 ? "That file was" : "\(rejected) files were") skipped.") }
     }
 
+    // MARK: Learning from the user's own renames
+
+    /// Stores a correction when the user changed a name Relabel gave (inline edit, or a rename in Finder).
+    func learn(_ record: HistoryRecord) {
+        guard prefs.learnFromRenames, let c = LearningStore.correction(from: record) else { return }
+        let first = engine.learning.add(c)
+        learned = engine.learning.all
+        if first, !UserDefaults.standard.bool(forKey: "learnNoticeShown") {
+            UserDefaults.standard.set(true, forKey: "learnNoticeShown")
+            pill.showMessage("Relabel learned from your rename and will use it next time. It stays on your Mac.")
+        }
+    }
+
+    /// Looks for files the user renamed in Finder since Relabel named them.
+    func checkExternalRenames() {
+        guard prefs.learnFromRenames else { return }
+        let history = engine.history
+        Task.detached(priority: .utility) { [weak self] in
+            let changed = history.detectExternalRenames()
+            guard !changed.isEmpty else { return }
+            await MainActor.run { [weak self] in
+                for r in changed { self?.learn(r) }
+                self?.reloadHistory()
+            }
+        }
+    }
+
+    func forgetEverything() {
+        engine.learning.forgetAll()
+        learned = []
+    }
+
+    func forget(_ id: UUID) {
+        engine.learning.remove(id: id)
+        learned = engine.learning.all
+    }
+
+    var styleDescription: String? { StyleProfile.describe(learned) }
+
     // MARK: Recent renames rows
 
     func undoRow(_ r: HistoryRecord) { run(r) { try self.engine.history.undo(id: r.id) } }
@@ -260,7 +303,11 @@ final class AppModel {
         let text = editText
         editingID = nil
         guard text != (r.newName as NSString).deletingPathExtension else { return }
-        run(r) { try self.engine.history.userRename(id: r.id, to: text) }
+        run(r) {
+            let rec = try self.engine.history.userRename(id: r.id, to: text)
+            self.learn(rec)
+            return rec
+        }
     }
 
     private func run(_ r: HistoryRecord, _ action: () throws -> HistoryRecord) {

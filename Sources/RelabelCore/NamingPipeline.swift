@@ -21,8 +21,13 @@ public final class NamingPipeline: @unchecked Sendable {
     private let namer: NamerFunction
 
     public init(history: RenameHistory, markers: ProcessedMarkers, prefs: @escaping @Sendable () -> NamingPreferences,
-                namer: @escaping NamerFunction = { ctx, p in await NamingModel.name(for: ctx, prefs: p) }) {
-        self.history = history; self.markers = markers; self.prefs = prefs; self.namer = namer
+                learning: LearningStore? = nil, namer: NamerFunction? = nil) {
+        self.history = history; self.markers = markers; self.prefs = prefs
+        self.namer = namer ?? { ctx, p in
+            // Past corrections the user made (most similar first) steer the model toward their own style.
+            let help = (p.learnFromRenames ? learning?.promptHelp(for: ctx) : nil) ?? ([], nil)
+            return await NamingModel.name(for: ctx, prefs: p, examples: help.examples, styleHint: help.style)
+        }
     }
 
     public struct Proposal: Sendable, Equatable {
@@ -83,7 +88,7 @@ public final class NamingPipeline: @unchecked Sendable {
         markers.mark(job.url, .renamed)          // before the move, so the watcher can't pick the new name up
         do {
             let rec = try history.rename(from: job.url, to: target, source: job.source, kind: job.kind,
-                                         relabelName: target.lastPathComponent, summary: proposal.summary)
+                                         relabelName: target.lastPathComponent, summary: proposal.summary, appName: job.appName)
             return .renamed(rec)
         } catch {
             markers.unmark(job.url)

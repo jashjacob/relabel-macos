@@ -7,6 +7,7 @@ public final class RelabelEngine: @unchecked Sendable {
 
     public let history: RenameHistory
     public let markers: ProcessedMarkers
+    public let learning: LearningStore
     private let lock = NSLock()
     private var prefsValue = NamingPreferences()
     private var watchers: [UUID: (folder: WatchedFolder, watcher: FolderWatcher)] = [:]
@@ -17,15 +18,15 @@ public final class RelabelEngine: @unchecked Sendable {
     private let stableFor: TimeInterval
     private let screenshotDelay: TimeInterval
 
-    public init(history: RenameHistory = RenameHistory(), markers: ProcessedMarkers = ProcessedMarkers(),
+    public init(history: RenameHistory = RenameHistory(), markers: ProcessedMarkers = ProcessedMarkers(), learning: LearningStore = LearningStore(),
                 stableFor: TimeInterval = 1.0, screenshotDelay: TimeInterval = 4.0,
                 namer: NamerFunction? = nil,
                 onState: @escaping @Sendable (QueueState) -> Void = { _ in },
                 onOutcome: @escaping @Sendable (RenameJob, JobOutcome) -> Void = { _, _ in }) {
-        self.history = history; self.markers = markers
+        self.history = history; self.markers = markers; self.learning = learning
         self.stableFor = stableFor; self.screenshotDelay = screenshotDelay
         let pipeline = NamingPipeline(history: history, markers: markers, prefs: { [unowned self] in self.prefs },
-                                      namer: namer ?? { ctx, p in await NamingModel.name(for: ctx, prefs: p) })
+                                      learning: learning, namer: namer)
         queue = RenameQueue(pipeline: pipeline, onState: onState, onOutcome: onOutcome)
     }
 

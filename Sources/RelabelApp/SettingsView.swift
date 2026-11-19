@@ -15,6 +15,8 @@ struct SettingsView: View {
                 .tabItem { Label("Appearance", systemImage: "paintbrush") }.tag(2)
             GeneralTab(model: model)
                 .tabItem { Label("General", systemImage: "gearshape") }.tag(3)
+            LearningTab(model: model)
+                .tabItem { Label("Learning", systemImage: "brain") }.tag(4)
         }
         .frame(width: 660, height: 600)
         .onAppear { model.refreshFolders(); model.refreshAI() }
@@ -274,5 +276,91 @@ struct GeneralTab: View {
             }
         }
         .formStyle(.grouped)
+    }
+}
+
+// MARK: Learning
+
+struct LearningTab: View {
+    let model: AppModel
+    var body: some View {
+        @Bindable var m = model
+        Form {
+            Section("Learn from my renames") {
+                Toggle("Learn from my renames", isOn: $m.prefs.learnFromRenames)
+                Text("When you change a name Relabel gave a file, in the menu or in Finder, Relabel remembers it and uses your style for similar files. Turning this off keeps what it learned but stops using it.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("What it learned") {
+                if model.learned.isEmpty {
+                    Text("Nothing yet. Rename a file Relabel named and it will show up here.").foregroundStyle(.secondary)
+                } else {
+                    Text("Relabel has learned from \(model.learned.count) of your renames.")
+                    if let style = model.styleDescription {
+                        Label(style, systemImage: "sparkles").font(.callout)
+                    } else {
+                        Text("After \(StyleProfile.minimumCorrections) renames it can describe your style.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                HStack {
+                    Button("See What It Learned") { model.showLearned = true }.disabled(model.learned.isEmpty)
+                    Button("Forget Everything", role: .destructive) { model.confirmForget = true }.disabled(model.learned.isEmpty)
+                }
+            }
+            Section {
+                Label("This data never leaves your Mac. It's a small file in ~/Library/Application Support/Relabel.", systemImage: "lock.fill")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+        .sheet(isPresented: $m.showLearned) { LearnedList(model: model) }
+        .confirmationDialog("Forget everything Relabel learned?", isPresented: $m.confirmForget, titleVisibility: .visible) {
+            Button("Forget Everything", role: .destructive) { model.forgetEverything() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This deletes all \(model.learned.count) remembered renames. Your files are not touched.")
+        }
+    }
+}
+
+struct LearnedList: View {
+    let model: AppModel
+    @Environment(\.dismiss) private var dismiss
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("What Relabel learned").font(.title3.bold())
+                Spacer()
+                Button("Done") { dismiss() }.keyboardShortcut(.defaultAction)
+            }.padding(14)
+            Divider()
+            if model.learned.isEmpty {
+                Text("Nothing learned yet.").foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        ForEach(model.learned.reversed()) { c in
+                            HStack(alignment: .top, spacing: 10) {
+                                Image(systemName: c.kind == .pdf ? "doc.text" : "photo").foregroundStyle(.secondary).frame(width: 22)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(c.relabelName).font(.caption).foregroundStyle(.secondary).strikethrough().lineLimit(1)
+                                    Text(c.userName).font(.callout.weight(.medium)).lineLimit(2)
+                                    Text(c.time.formatted(date: .abbreviated, time: .omitted) + (c.appName.map { " · \($0)" } ?? ""))
+                                        .font(.caption2).foregroundStyle(.tertiary)
+                                }
+                                Spacer()
+                                Button { model.forget(c.id) } label: { Image(systemName: "xmark.circle") }
+                                    .buttonStyle(.borderless).help("Forget this one")
+                                    .accessibilityLabel("Forget \(c.userName)")
+                            }
+                            .padding(.horizontal, 14).padding(.vertical, 8)
+                            Divider()
+                        }
+                    }
+                }
+            }
+        }
+        .frame(width: 520, height: 440)
     }
 }

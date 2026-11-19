@@ -20,6 +20,8 @@ public struct HistoryRecord: Codable, Identifiable, Sendable, Equatable {
     public var summary: String
     /// Set when the user edited the name Relabel gave (used to learn from corrections).
     public var userName: String? = nil
+    /// Frontmost app when a screenshot was taken (kept so the style profile can tell if names include it).
+    public var appName: String? = nil
 
     public var oldName: String { (oldPath as NSString).lastPathComponent }
     public var newName: String { (newPath as NSString).lastPathComponent }
@@ -73,13 +75,13 @@ public final class RenameHistory: @unchecked Sendable {
     /// Performs the rename and records it. Never overwrites: the caller supplies a free destination.
     @discardableResult
     public func rename(from old: URL, to new: URL, source: RenameSource, kind: FileKind,
-                       relabelName: String, summary: String) throws -> HistoryRecord {
+                       relabelName: String, summary: String, appName: String? = nil) throws -> HistoryRecord {
         guard let key = FileIdentity.key(old) else { throw HistoryError.movedOrRenamed(verb: "rename") }
         try FileManager.default.moveItem(at: old, to: new)   // fails if `new` exists
         let rec = HistoryRecord(id: UUID(), time: Date(), oldPath: old.path, newPath: new.path, source: source,
                                 folder: old.deletingLastPathComponent().path, kind: kind, state: .applied,
                                 inodeKey: key, modified: FileIdentity.modified(new) ?? Date(),
-                                relabelName: relabelName, summary: summary)
+                                relabelName: relabelName, summary: summary, appName: appName)
         add(rec)
         return rec
     }
@@ -121,6 +123,38 @@ public final class RenameHistory: @unchecked Sendable {
             saveLocked()
         }
         return rec
+    }
+
+    /// Finds files Relabel renamed that the user has since renamed in Finder (same inode, same folder, new name).
+    /// Updates those records and returns them, so the app can learn from the correction.
+    public func detectExternalRenames(maxAge: TimeInterval = 14 * 24 * 3600) -> [HistoryRecord] {
+        let fm = FileManager.default
+        let cutoff = Date().addingTimeInterval(-maxAge)
+        let candidates = lock.withLock { records.filter { $0.state == .applied && $0.time > cutoff && !fm.fileExists(atPath: $0.newPath) } }
+        guard !candidates.isEmpty else { return [] }
+        var changed: [HistoryRecord] = []
+        var byFolder: [String: [String: String]] = [:]     // folder -> inodeKey -> file name
+        for var rec in candidates {
+            let folder = (rec.newPath as NSString).deletingLastPathComponent
+            if byFolder[folder] == nil {
+                var map: [String: String] = [:]
+                for name in (try? fm.contentsOfDirectory(atPath: folder)) ?? [] where !name.hasPrefix(".") {
+                    if let k = FileIdentity.key(URL(fileURLWithPath: folder).appendingPathComponent(name)) { map[k] = name }
+                }
+                byFolder[folder] = map
+            }
+            guard let name = byFolder[folder]?[rec.inodeKey], name != rec.newName else { continue }
+            rec.newPath = (folder as NSString).appendingPathComponent(name)
+            rec.userName = name
+            rec.modified = FileIdentity.modified(rec.newURL) ?? rec.modified
+            changed.append(rec)
+        }
+        guard !changed.isEmpty else { return [] }
+        lock.withLock {
+            for rec in changed { if let i = records.firstIndex(where: { $0.id == rec.id }) { records[i] = rec } }
+            saveLocked()
+        }
+        return changed
     }
 
     private func move(id: UUID, forward: Bool) throws -> HistoryRecord {

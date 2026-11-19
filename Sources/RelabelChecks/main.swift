@@ -24,6 +24,11 @@ run("undo / redo / never overwrite") { try RenameChecks.undoRedo() }
 run("inline edit (user rename)") { try RenameChecks.userRename() }
 run("name quality") { TidyChecks.nameQuality() }
 run("date tokens") { TidyChecks.dateTokens() }
+run("learning store") { try LearningChecks.store() }
+run("learning similarity (embeddings)") { LearningChecks.similarity() }
+run("style profile") { LearningChecks.style() }
+run("detect renames in Finder") { try LearningChecks.detection() }
+run("prompt includes learning") { LearningChecks.promptHelp() }
 run("processed markers") { try RenameChecks.markers() }
 do { try await RenameChecks.hold(); print(failures == 0 ? "ok   hold / release" : "see failures above") } catch { failures += 1; print("ERROR hold \(error)") }
 do { try await RenameChecks.endToEnd(); do { try await TidyChecks.planner(); print(failures == 0 ? "ok   tidy planner" : "see failures above") } catch { failures += 1; print("ERROR tidy \(error)") }
