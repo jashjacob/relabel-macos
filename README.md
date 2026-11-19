@@ -1,7 +1,21 @@
-# Relabel
+# Relabel: automatic screenshot and PDF renamer for macOS
 
-A personal macOS menu bar app that gives screenshots and PDFs descriptive names using Apple's on-device model.
-All 100% privately on your Mac: no network calls, no accounts, no analytics, no third-party dependencies.
+Relabel is a macOS menu bar app that gives your screenshots and PDFs readable names, like
+"Quarterly budget forecast 2027" instead of "Screenshot 2026-11-19 at 2.03.04 PM.png".
+It uses Apple's on-device model (Apple Intelligence) together with Vision OCR, so it understands what a file
+actually shows.
+
+**All 100% privately on your Mac.** No network calls, no accounts, no analytics, no API keys, no third-party
+dependencies. It works with Wi-Fi off.
+
+## Features
+
+- Watches the folders you choose and renames new screenshots and PDFs as they arrive
+- Drag files or folders onto it, or tidy up a whole folder in one go (preview before anything changes)
+- Every rename can be undone and redone, and only the filename changes, so dates stay the same
+- Short, standard or detailed names, optional date and app name, and a custom instruction for PDFs
+- Learns from your own corrections
+- Built with Swift, SwiftUI, Vision, FoundationModels, PDFKit and NaturalLanguage. Apple silicon, macOS 27
 
 ## Build
 

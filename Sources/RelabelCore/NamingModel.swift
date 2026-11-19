@@ -53,6 +53,9 @@ struct GeneratedName: Generable {
 }
 
 public enum NamingModel {
+    /// True when the on-device model on this Mac can take pictures.
+    public static var supportsImages: Bool { SystemLanguageModel.default.capabilities.contains(.vision) }
+
     public static func availability() -> ModelAvailability {
         switch SystemLanguageModel.default.availability {
         case .available: .available
@@ -86,8 +89,12 @@ public enum NamingModel {
         }
     }
 
+    static func imageHint(_ ctx: FileContext) -> String {
+        ctx.image == nil ? "" : "A picture of it is attached. Use the picture to see what app, website, brand or document it is and what it is about. Use the text for exact names and numbers.\n"
+    }
+
     public static func prompt(for ctx: FileContext, prefs: NamingPreferences, examples: [String] = []) -> String {
-        var p = "Name this \(ctx.kind == .pdf ? "PDF" : "screenshot").\nLength: \(prefs.length.instruction)\n\(example(for: prefs.length))\n"
+        var p = "Name this \(ctx.kind == .pdf ? "PDF" : "screenshot").\n\(imageHint(ctx))Length: \(prefs.length.instruction)\n\(example(for: prefs.length))\n"
         if ctx.kind == .screenshot {
             if let app = ctx.appName { p += "Frontmost app when captured: \(app)\n" }
             if prefs.includeAppName, ctx.appName != nil { p += "End the title with the app name, like \"Quarterly budget in Excel\".\n" }
@@ -108,16 +115,21 @@ public enum NamingModel {
 
     /// Names a file with the on-device model. Falls back to basic naming (and says why in `note`).
     public static func name(for ctx: FileContext, prefs: NamingPreferences, examples: [String] = [],
-                            useModel: Bool = true) async -> (result: NamingResult, note: String?) {
+                            useModel: Bool = true, forceTextOnly: Bool = false) async -> (result: NamingResult, note: String?) {
         let basic = BasicNamer.name(for: ctx, prefs: prefs)
         guard useModel else { return (basic, "Model skipped") }
         let avail = availability()
         guard avail == .available else { return (basic, avail.explanation) }
-        guard ctx.text.count >= 3 || !ctx.labels.isEmpty else { return (basic, "No text found to name it from.") }
+        let withImage = prefs.useImage && !forceTextOnly && supportsImages && ctx.image != nil
+        guard withImage || ctx.text.count >= 3 || !ctx.labels.isEmpty else { return (basic, "No text found to name it from.") }
         do {
+            var c = ctx
+            if !withImage { c.image = nil }
+            let text = prompt(for: c, prefs: prefs, examples: examples)
             let session = LanguageModelSession(instructions: rules)
-            let response = try await session.respond(to: prompt(for: ctx, prefs: prefs, examples: examples),
-                                                     generating: GeneratedName.self,
+            let full: Prompt
+            if let img = c.image { full = Prompt { text; Attachment(img.image) } } else { full = Prompt { text } }
+            let response = try await session.respond(to: full, generating: GeneratedName.self,
                                                      options: GenerationOptions(sampling: .greedy))
             let title = Sanitizer.restoreAcronyms(Sanitizer.sentenceCased(Sanitizer.cleanTitle(response.content.title)), source: ctx.text)
             guard !title.isEmpty else { return (basic, "No better name found. Using basic naming.") }

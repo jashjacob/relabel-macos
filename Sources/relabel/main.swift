@@ -43,6 +43,15 @@ case "spike":
         if let t = ctx.pdfTitle { print("PDF title: \(t)") }
         print("Model:   \(NamingModel.availability())")
         print("--- recognized text (first 400 chars) ---\n\(ctx.text.prefix(400))\n-----------------------------------------")
+        print("Vision:  model can look at images: \(NamingModel.supportsImages)")
+        for mode in [(false, "text only"), (true, "text + image")] where mode.0 == false || ctx.image != nil {
+            var p = NamingPreferences(length: .standard, includeAppName: appName != nil); p.useImage = mode.0
+            let t0 = Date()
+            let r = await NamingModel.name(for: ctx, prefs: p, forceTextOnly: !mode.0)
+            print(String(format: "%@ %5.1fs  %@  [%@, %@]", mode.1.padding(toLength: 13, withPad: " ", startingAt: 0),
+                         Date().timeIntervalSince(t0), r.result.title, r.result.category, "\(r.result.source)"))
+            if let n = r.note { print("          note: \(n)") }
+        }
         for length in NameLength.allCases {
             let prefs = NamingPreferences(length: length, includeAppName: appName != nil)
             let r = await NamingModel.name(for: ctx, prefs: prefs)

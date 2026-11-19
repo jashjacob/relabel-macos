@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "Relabel",
-    platforms: [.macOS(.v26)],
+    platforms: [.macOS("27.0")],
     products: [
         .library(name: "RelabelCore", targets: ["RelabelCore"]),
         .executable(name: "RelabelApp", targets: ["RelabelApp"]),
