@@ -1,7 +1,11 @@
 import AppKit
 import RelabelCore
 
-enum IconStyle { case face, scanLine }
+enum IconStyle: String, CaseIterable {
+    case scanLine, face
+    var label: String { self == .scanLine ? "Scan line" : "Face" }
+    var blurb: String { self == .scanLine ? "A plain frame with a line that sweeps while naming." : "A small face whose eyes blink while naming and look at a dragged file." }
+}
 
 /// Draws the menu bar icon as a template image. Face eyes blink while naming and look sleepy when paused.
 enum MenuBarFace {

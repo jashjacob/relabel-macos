@@ -138,6 +138,32 @@ enum RenameChecks {
         check(t1 == t2, "watch start fixed")
     }
 
+    /// Low Power / hot: new files wait, then are named when released. Dropped files are never held.
+    static func hold() async throws {
+        let support = scratch(), folder = scratch()
+        defer { try? FileManager.default.removeItem(at: support); try? FileManager.default.removeItem(at: folder) }
+        let count = Box(0)
+        let engine = RelabelEngine(history: RenameHistory(storeURL: support.appendingPathComponent("h.json")),
+                                   markers: ProcessedMarkers(storeURL: support.appendingPathComponent("p.json")),
+                                   stableFor: 0.5, screenshotDelay: 0.5,
+                                   namer: { _, _ in (NamingResult(title: "Held invoice", category: "x", source: .model), nil) },
+                                   onOutcome: { _, o in if case .renamed = o { count.mutate { $0 += 1 } } })
+        engine.sync([RelabelEngine.WatchedFolder(id: UUID(), url: folder, kind: .pdf)])
+        engine.setHold(true)
+        try await Task.sleep(for: .milliseconds(300))
+        try FileManager.default.copyItem(at: URL(fileURLWithPath: "Fixtures/invoice-text.pdf"), to: folder.appendingPathComponent("a.pdf"))
+        try await Task.sleep(for: .seconds(4))
+        check(count.value == 0 && FileManager.default.fileExists(atPath: folder.appendingPathComponent("a.pdf").path), "nothing named while held")
+        let dropped = folder.appendingPathComponent("dropped.pdf")
+        try FileManager.default.copyItem(at: URL(fileURLWithPath: "Fixtures/invoice-scanned.pdf"), to: dropped)
+        engine.enqueue(RenameJob(url: dropped, kind: .pdf, source: .drop))
+        try await Task.sleep(for: .seconds(3))
+        check(count.value == 1, "dropped file is not held, got \(count.value)")
+        engine.setHold(false)
+        try await Task.sleep(for: .seconds(3))
+        check(count.value == 2, "held file named after release, got \(count.value)")
+    }
+
     /// Whole flow with a stand-in namer: watcher -> queue -> rename -> history, plus partial downloads ignored.
     static func endToEnd() async throws {
         let support = scratch(), folder = scratch()

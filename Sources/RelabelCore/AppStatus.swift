@@ -8,6 +8,7 @@ public enum AppStatus: Equatable, Sendable {
     case paused
     case waitingForAppleIntelligence
     case coolingDown
+    case lowPowerPaused
     case folderUnreachable
     case noFolder
     case automaticNamingOff
@@ -20,6 +21,7 @@ public enum AppStatus: Equatable, Sendable {
         case .paused: "Paused"
         case .waitingForAppleIntelligence: "Waiting for Apple Intelligence"
         case .coolingDown: "Letting your Mac cool down"
+        case .lowPowerPaused: "Paused in Low Power Mode"
         case .folderUnreachable: "Can't reach the screenshots folder"
         case .noFolder: "No screenshots folder"
         case .automaticNamingOff: "Automatic naming is off"
@@ -31,7 +33,7 @@ public enum AppStatus: Equatable, Sendable {
     public var iconState: IconState {
         switch self {
         case .namingOne, .namingBatch: .naming
-        case .paused, .coolingDown, .waitingForAppleIntelligence, .automaticNamingOff: .paused
+        case .paused, .coolingDown, .lowPowerPaused, .waitingForAppleIntelligence, .automaticNamingOff: .paused
         case .folderUnreachable, .noFolder: .error
         case .idle: .idle
         }

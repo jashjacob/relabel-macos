@@ -25,6 +25,7 @@ run("inline edit (user rename)") { try RenameChecks.userRename() }
 run("name quality") { TidyChecks.nameQuality() }
 run("date tokens") { TidyChecks.dateTokens() }
 run("processed markers") { try RenameChecks.markers() }
+do { try await RenameChecks.hold(); print(failures == 0 ? "ok   hold / release" : "see failures above") } catch { failures += 1; print("ERROR hold \(error)") }
 do { try await RenameChecks.endToEnd(); do { try await TidyChecks.planner(); print(failures == 0 ? "ok   tidy planner" : "see failures above") } catch { failures += 1; print("ERROR tidy \(error)") }
 print(failures == 0 ? "ok   watcher + queue + rename end to end" : "see failures above") } catch { failures += 1; print("ERROR e2e \(error)") }
 print(failures == 0 ? "All checks passed" : "\(failures) failure(s)")
