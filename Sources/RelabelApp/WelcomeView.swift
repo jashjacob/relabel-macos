@@ -118,6 +118,10 @@ struct WelcomeView: View {
                  ? "Relabel lives in your menu bar and will name new files in the folders you chose."
                  : "Relabel does nothing until you choose a folder. Open Settings from the menu bar icon any time.")
                 .multilineTextAlignment(.center)
+            Toggle("Open Relabel at login", isOn: Binding(get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
+                .toggleStyle(.switch).padding(.top, 6)
+            if let msg = model.loginMessage { Text(msg).font(.caption).foregroundStyle(.orange) }
+            Text("So naming keeps working without you starting it.").font(.caption).foregroundStyle(.secondary)
             Spacer()
             Button("Done") { finish() }.buttonStyle(.borderedProminent).controlSize(.large)
         }

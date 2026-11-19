@@ -28,6 +28,10 @@ public struct NamingPreferences: Codable, Sendable, Equatable {
     public var notifications = true
     /// Show the model the picture as well as the text (slower, understands logos, layout and charts).
     public var useImage = true
+    public var pauseInLowPowerMode = true
+    public var copyScreenshotsToClipboard = false
+    /// Learning from the user's own renames (step 8). Off keeps the data but stops using it.
+    public var learnFromRenames = true
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -37,6 +41,9 @@ public struct NamingPreferences: Codable, Sendable, Equatable {
         customPDFInstruction = try c.decodeIfPresent(String.self, forKey: .customPDFInstruction) ?? ""
         notifications = try c.decodeIfPresent(Bool.self, forKey: .notifications) ?? true
         useImage = try c.decodeIfPresent(Bool.self, forKey: .useImage) ?? true
+        pauseInLowPowerMode = try c.decodeIfPresent(Bool.self, forKey: .pauseInLowPowerMode) ?? true
+        copyScreenshotsToClipboard = try c.decodeIfPresent(Bool.self, forKey: .copyScreenshotsToClipboard) ?? false
+        learnFromRenames = try c.decodeIfPresent(Bool.self, forKey: .learnFromRenames) ?? true
     }
 
     public init(length: NameLength = .standard, includeAppName: Bool = false,

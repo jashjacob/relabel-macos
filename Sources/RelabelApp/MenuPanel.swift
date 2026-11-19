@@ -80,6 +80,16 @@ struct MenuPanelView: View {
             .accessibilityElement(children: .combine)
             .accessibilityLabel(model.status.accessibilityLabel)
 
+            if let note = model.aiAvailability.explanation {
+                HStack(alignment: .top, spacing: 6) {
+                    Image(systemName: "sparkles").foregroundStyle(.orange)
+                    Text(note).font(.callout)
+                }
+                .accessibilityElement(children: .combine)
+                if model.aiAvailability == .appleIntelligenceOff {
+                    Button("Open Apple Intelligence & Siri Settings") { model.openAppleIntelligenceSettings() }
+                }
+            }
             ForEach(model.lostMessages, id: \.self) { msg in
                 HStack(alignment: .top, spacing: 6) {
                     Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)

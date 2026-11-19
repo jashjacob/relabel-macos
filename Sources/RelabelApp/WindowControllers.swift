@@ -32,4 +32,14 @@ final class SingleWindow {
     }
 
     func close() { window?.close() }
+
+    /// Dev hook: writes the window's own contents to a PNG (no screen recording permission needed).
+    func snapshot(to path: String) {
+        guard let v = window?.contentView, let rep = v.bitmapImageRepForCachingDisplay(in: v.bounds) else { return }
+        v.cacheDisplay(in: v.bounds, to: rep)
+        try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
+    }
+
+    /// Dev hook: selects a tab by index when the content is a TabView-backed hosting view.
+    var contentWindow: NSWindow? { window }
 }

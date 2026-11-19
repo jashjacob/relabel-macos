@@ -1,5 +1,6 @@
 import SwiftUI
 import UserNotifications
+import ServiceManagement
 import RelabelCore
 
 @MainActor
@@ -21,9 +22,19 @@ final class AppModel {
     var editText = ""
     private(set) var rowErrors: [UUID: String] = [:]
     private var queueState: QueueState = .idle
+    var iconStyle: IconStyle = IconStyle(rawValue: UserDefaults.standard.string(forKey: "iconStyle") ?? "") ?? .scanLine {
+        didSet { UserDefaults.standard.set(iconStyle.rawValue, forKey: "iconStyle") }
+    }
+    private(set) var aiAvailability: ModelAvailability = .available
+    private(set) var hold: HoldReason?
+    private(set) var launchAtLogin = false
+    var loginMessage: String?
+    var settingsTab = 0
+    enum HoldReason { case lowPower, hot }
     var prefs = NamingPreferences() {
         didSet {
             engine.prefs = prefs
+            updateHold()
             if let d = try? JSONEncoder().encode(prefs) { UserDefaults.standard.set(d, forKey: "namingPrefs") }
         }
     }
@@ -52,6 +63,13 @@ final class AppModel {
         pill.onUndo = { [weak self] r in self?.undo(r) }
         pill.onRetry = { [weak self] job in self?.engine.enqueue(job) }
         reloadHistory()
+        refreshAI()
+        launchAtLogin = SMAppService.mainApp.status == .enabled
+        let nc = NotificationCenter.default
+        for name in [Notification.Name.NSProcessInfoPowerStateDidChange, ProcessInfo.thermalStateDidChangeNotification] {
+            nc.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in Task { @MainActor in self?.updateHold() } }
+        }
+        updateHold()
         refreshFolders()
         Task { await TextExtractor.warmUp() }   // first recognition on a Mac loads a model; do it now, not on the first file
     }
@@ -93,14 +111,51 @@ final class AppModel {
         }
     }
 
+    // MARK: Power, thermal and Apple Intelligence
+
+    func updateHold() {
+        let info = ProcessInfo.processInfo
+        let new: HoldReason? = (info.thermalState == .serious || info.thermalState == .critical) ? .hot
+            : (prefs.pauseInLowPowerMode && info.isLowPowerModeEnabled ? .lowPower : nil)
+        guard new != hold else { return }
+        hold = new
+        engine.setHold(new != nil)
+        updateStatus()
+    }
+
+    func refreshAI() {
+        let a = NamingModel.availability()
+        if a != aiAvailability { aiAvailability = a; updateStatus() }
+    }
+
+    func openAppleIntelligenceSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.Siri-Settings.extension") { NSWorkspace.shared.open(url) }
+    }
+
+    func setLaunchAtLogin(_ on: Bool) {
+        do {
+            if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
+            loginMessage = nil
+        } catch {
+            loginMessage = "Couldn't change this: \(error.localizedDescription)"
+        }
+        let st = SMAppService.mainApp.status
+        launchAtLogin = st == .enabled
+        if on, st == .requiresApproval { loginMessage = "Allow Relabel in System Settings > General > Login Items." }
+    }
+
     private func updateStatus() {
         if isPaused { status = .paused; return }
+        if hold == .lowPower { status = .lowPowerPaused; return }
+        if hold == .hot { status = .coolingDown; return }
         switch queueState {
         case .one: status = .namingOne; return
         case .batch: status = .namingBatch; return
         case .idle: break
         }
-        if let s = screenshotsFolder {
+        if aiAvailability == .stillLoading, screenshotsFolder?.isReachable == true || !pdfFolders.isEmpty {
+            status = .waitingForAppleIntelligence
+        } else if let s = screenshotsFolder {
             status = s.isReachable ? .idle : .folderUnreachable
         } else if !pdfFolders.isEmpty {
             status = .idle
@@ -124,6 +179,10 @@ final class AppModel {
             reloadHistory()
             pill.showRenamed(r)
             if prefs.notifications { notify("\(r.oldName) → \(r.newName)") }
+            if prefs.copyScreenshotsToClipboard, r.kind == .screenshot, job.source == .auto, let img = NSImage(contentsOf: r.newURL) {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.writeObjects([img])
+            }
         case .failed(let why):
             if job.source != .tidy { pill.showFailure(job, why) }
         case .kept(let why):

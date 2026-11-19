@@ -9,7 +9,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private var statusItem: NSStatusItem!
     private var panel: MenuPanelController!
     private var timer: Timer?
-    private var style: IconStyle = .scanLine   // generic for now; the face is an optional style later
     private var settingsWindow: SingleWindow!
     private var welcomeWindow: SingleWindow!
     private var tidyWindow: SingleWindow!
@@ -62,15 +61,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             MainActor.assumeIsolated {
                 guard let self else { return }
                 self.model.tick += 1
-                if self.model.tick % 20 == 0 { self.model.refreshFolders() }   // notice moved/deleted folders within ~5s
+                if self.model.tick % 20 == 0 { self.model.refreshFolders(); self.model.refreshAI() }   // notice moved/deleted folders within ~5s
                 self.refreshIcon()
             }
         }
-        // Dev hook: RELABEL_STATE=naming|paused|error previews icon states; RELABEL_STYLE=scan.
         let env = ProcessInfo.processInfo.environment
-        if env["RELABEL_STYLE"] == "face" { style = .face }
         if !UserDefaults.standard.bool(forKey: Self.welcomeKey) || env["RELABEL_WELCOME"] == "1" {
             DispatchQueue.main.async { [self] in welcomeWindow.show() }
+        }
+        if let w = env["RELABEL_OPEN"] {   // dev hook: open a window at launch
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [self] in
+                if w == "settings" { settingsWindow.show() } else if w == "welcome" { welcomeWindow.show() } else if w == "tidy" { tidyWindow.show() }
+                if let out = env["RELABEL_SNAPSHOT"] {
+                    let tabs = Int(env["RELABEL_TABS"] ?? "1") ?? 1
+                    let first = Int(env["RELABEL_FIRST_TAB"] ?? "0") ?? 0
+                    for i in 0..<tabs {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + (Double(env["RELABEL_SNAP_DELAY"] ?? "") ?? 14) + Double(i) * 5) { [self] in
+                            model.settingsTab = first + i
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [self] in
+                                (w == "settings" ? settingsWindow : w == "tidy" ? tidyWindow : welcomeWindow).snapshot(to: "\(out).\(i).png")
+                            }
+                        }
+                    }
+                }
+            }
         }
         switch env["RELABEL_STATE"] {
         case "naming": model.status = .namingOne
@@ -82,7 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     private func refreshIcon() {
         guard let b = statusItem.button else { return }
-        b.image = MenuBarFace.image(style: style, state: model.status.iconState, frame: model.tick, dragging: model.isDraggingFile)
+        b.image = MenuBarFace.image(style: model.iconStyle, state: model.status.iconState, frame: model.tick, dragging: model.isDraggingFile)
         b.setAccessibilityLabel(model.status.accessibilityLabel)
     }
 
