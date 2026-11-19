@@ -6,6 +6,9 @@ public struct NamingResult: Sendable, Equatable {
     public var title: String
     public var category: String
     public var source: Source
+    public init(title: String, category: String, source: Source) {
+        self.title = title; self.category = category; self.source = source
+    }
 }
 
 /// Why the on-device model can or can't be used right now.
