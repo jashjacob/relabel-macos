@@ -3,6 +3,7 @@ import RelabelCore
 
 // relabel spike <file> [--app <name>] [--prompt]
 // relabel watch <folder> [--kind screenshots|pdf] [--seconds N]
+// relabel tidy <folder> [--dry-run] [--length short|standard|detailed] [--date none|start|end] [--all]
 // relabel history
 // relabel undo
 // Set RELABEL_SUPPORT_DIR to keep history and markers somewhere other than ~/Library/Application Support/Relabel.
@@ -11,6 +12,7 @@ func usage() -> Never {
     usage:
       relabel spike <file> [--app <frontmost app>] [--prompt]   names for all three lengths + basic fallback
       relabel watch <folder> [--kind screenshots|pdf] [--seconds N]   name new files as they arrive
+      relabel tidy <folder> [--dry-run] [--length ...] [--date none|start|end] [--all]   name a whole folder
       relabel history                                           recent renames
       relabel undo                                              undo the latest rename
     """)
@@ -87,6 +89,41 @@ case "watch":
     print("Watching \(folder.path) for new \(kind.displayName) files for \(Int(seconds))s...")
     try? await Task.sleep(for: .seconds(seconds))
 
+case "tidy":
+    guard args.count >= 2 else { usage() }
+    let folder = expand(args[1])
+    var prefs = NamingPreferences()
+    if let l = option("--length"), let len = NameLength(rawValue: l) { prefs.length = len }
+    switch option("--date") { case "start": prefs.dateStyle = .atStart; case "end": prefs.dateStyle = .atEnd; default: break }
+    let dry = args.contains("--dry-run")
+    let history = RenameHistory(), markers = ProcessedMarkers()
+    let batchPrefs = prefs
+    let pipeline = NamingPipeline(history: history, markers: markers, prefs: { batchPrefs })
+    print("Warming up text recognition...")
+    await TextExtractor.warmUp()
+    var items = TidyPlanner.scan(folder: folder, markers: markers)
+    if items.isEmpty { print("Nothing to tidy up"); exit(0) }
+    let box = ItemsBox(items)
+    await TidyPlanner.proposeAll(items, includeGood: args.contains("--all"), prefs: prefs, pipeline: pipeline) { i, item, done, total in
+        box.set(i, item)
+        if item.status != .naming { print("Naming \(done) of \(total)") }
+    }
+    items = box.items
+    if args.contains("--all") { for i in items.indices { items[i].selected = items[i].status == .ready } }
+    let preview = TidyPlanner.previewNames(items, prefs: prefs)
+    for item in items {
+        let note = item.alreadyGood && !args.contains("--all") ? "(already has a good name)" : ""
+        switch item.status {
+        case .ready: print("\(item.selected ? "✓" : " ") \(item.url.lastPathComponent)  ->  \(preview[item.id] ?? "-")")
+        case .kept(let why), .failed(let why): print("  \(item.url.lastPathComponent)  (\(why))")
+        default: print("  \(item.url.lastPathComponent)  \(note)")
+        }
+    }
+    if dry { print("Dry run: nothing renamed."); exit(0) }
+    let result = TidyPlanner.apply(items, prefs: prefs, history: history, markers: markers)
+    print("Renamed \(result.records.count) files. Undo with: relabel undo (once per file)")
+    for f in result.failures { print("FAILED \(f.name): \(f.reason)") }
+
 case "history":
     for r in RenameHistory().recent(20) {
         print("\(r.state == .applied ? "●" : "○") \(r.time.formatted(date: .abbreviated, time: .standard))  \(r.oldName)  ->  \(r.newName)  [\(r.source.rawValue)]")
@@ -99,4 +136,11 @@ case "undo":
     catch { print(error.localizedDescription); exit(1) }
 
 default: usage()
+}
+
+final class ItemsBox: @unchecked Sendable {
+    private let lock = NSLock(); private var v: [TidyItem]
+    init(_ v: [TidyItem]) { self.v = v }
+    var items: [TidyItem] { lock.withLock { v } }
+    func set(_ i: Int, _ item: TidyItem) { lock.withLock { v[i] = item } }
 }

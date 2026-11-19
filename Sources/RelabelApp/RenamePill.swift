@@ -42,6 +42,7 @@ final class PillController {
     }
 
     func showRenamed(_ r: HistoryRecord) { present(.renamed(r)) }
+    func showMessage(_ text: String) { present(.message(text), lasting: 5) }
     func showFailure(_ job: RenameJob, _ detail: String) { present(.failed(job, detail), lasting: 8) }
 
     private func undo(_ r: HistoryRecord) {
