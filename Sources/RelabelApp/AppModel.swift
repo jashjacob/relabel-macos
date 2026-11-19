@@ -11,6 +11,18 @@ final class AppModel {
     var tick = 0   // animation clock for the icon
 
     let bookmarks: FolderBookmarks
+    @ObservationIgnored private(set) var engine: RelabelEngine!
+    let pill = PillController()
+    private(set) var recents: [HistoryRecord] = []
+    private(set) var lastRename: HistoryRecord?
+    private(set) var isPaused = false
+    private var queueState: QueueState = .idle
+    var prefs = NamingPreferences() {
+        didSet {
+            engine.prefs = prefs
+            if let d = try? JSONEncoder().encode(prefs) { UserDefaults.standard.set(d, forKey: "namingPrefs") }
+        }
+    }
     private(set) var screenshotsFolder: ResolvedFolder?
     private(set) var pdfFolders: [ResolvedFolder] = []
     var folderError: String?
@@ -24,7 +36,18 @@ final class AppModel {
 
     init(bookmarks: FolderBookmarks = FolderBookmarks()) {
         self.bookmarks = bookmarks
+        engine = RelabelEngine(
+            onState: { [weak self] state in Task { @MainActor in self?.queueState = state; self?.updateStatus() } },
+            onOutcome: { [weak self] job, outcome in Task { @MainActor in self?.handle(job, outcome) } })
+        if let d = UserDefaults.standard.data(forKey: "namingPrefs"), let p = try? JSONDecoder().decode(NamingPreferences.self, from: d) {
+            prefs = p
+        }
+        engine.prefs = prefs
+        pill.onUndo = { [weak self] r in self?.undo(r) }
+        pill.onRetry = { [weak self] job in self?.engine.enqueue(job) }
+        reloadHistory()
         refreshFolders()
+        Task { await TextExtractor.warmUp() }   // first recognition on a Mac loads a model; do it now, not on the first file
     }
 
     /// Messages for every folder we can't reach, shown in the menu panel.
@@ -53,19 +76,63 @@ final class AppModel {
                 }
             }
         }
+        if !isPaused { engine.sync(watchedFolders()) }
         updateStatus()
     }
 
+    private func watchedFolders() -> [RelabelEngine.WatchedFolder] {
+        ([screenshotsFolder].compactMap { $0 } + pdfFolders).compactMap { f in
+            guard f.isReachable, let url = f.url else { return nil }
+            return .init(id: f.id, url: url, kind: f.entry.kind)
+        }
+    }
+
     private func updateStatus() {
-        switch status {
-        case .paused, .namingOne, .namingBatch: return   // later steps own these
-        default: break
+        if isPaused { status = .paused; return }
+        switch queueState {
+        case .one: status = .namingOne; return
+        case .batch: status = .namingBatch; return
+        case .idle: break
         }
         if let s = screenshotsFolder {
             status = s.isReachable ? .idle : .folderUnreachable
+        } else if !pdfFolders.isEmpty {
+            status = .idle
         } else {
             status = .noFolder
         }
+    }
+
+    // MARK: Naming results
+
+    func togglePause() {
+        isPaused.toggle()
+        engine.setPaused(isPaused, folders: watchedFolders())
+        updateStatus()
+    }
+
+    private func handle(_ job: RenameJob, _ outcome: JobOutcome) {
+        switch outcome {
+        case .renamed(let r):
+            lastRename = r
+            reloadHistory()
+            pill.showRenamed(r)
+        case .failed(let why):
+            if job.source != .tidy { pill.showFailure(job, why) }
+        case .kept, .skipped:
+            break
+        }
+    }
+
+    /// Returns an error message, or nil when the undo worked.
+    func undo(_ r: HistoryRecord) -> String? {
+        defer { reloadHistory() }
+        do { try engine.history.undo(id: r.id); return nil } catch { return error.localizedDescription }
+    }
+
+    private func reloadHistory() {
+        recents = engine.history.recent(10)
+        namedCount = engine.history.namedCount
     }
 
     // MARK: Choosing folders

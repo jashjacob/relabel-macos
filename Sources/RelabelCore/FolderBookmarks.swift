@@ -37,8 +37,7 @@ public final class FolderBookmarks: @unchecked Sendable {
     private var accessed: [UUID: URL] = [:]
 
     public static var defaultStoreURL: URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Relabel/folders.json")
+        AppSupport.directory.appendingPathComponent("folders.json")
     }
 
     public init(storeURL: URL = FolderBookmarks.defaultStoreURL) {

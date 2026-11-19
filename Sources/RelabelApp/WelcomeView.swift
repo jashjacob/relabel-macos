@@ -14,12 +14,13 @@ struct WelcomeView: View {
                 case 0: intro
                 case 1: screenshots
                 case 2: pdfs
+                case 3: demo
                 default: done
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             HStack(spacing: 6) {
-                ForEach(0..<4) { Circle().fill($0 == step ? Color.accentColor : .secondary.opacity(0.3)).frame(width: 7, height: 7) }
+                ForEach(0..<5) { Circle().fill($0 == step ? Color.accentColor : .secondary.opacity(0.3)).frame(width: 7, height: 7) }
             }
             .accessibilityHidden(true)
         }
@@ -78,6 +79,36 @@ struct WelcomeView: View {
         }
     }
 
+    private var demo: some View {
+        VStack(spacing: 14) {
+            Text("Take a screenshot and watch it get a name").font(.title2.bold()).multilineTextAlignment(.center)
+            if model.screenshotsFolder?.isReachable != true {
+                Text("You skipped the screenshots folder, so there's nothing to watch yet. You can set it in Settings.")
+                    .multilineTextAlignment(.center).foregroundStyle(.secondary)
+            } else if let r = model.lastRename, r.id != nav.baseline {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Renamed", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                    Text(r.oldName).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                    Text(r.newName).font(.headline).lineLimit(2)
+                }
+                .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+                .accessibilityElement(children: .combine)
+            } else {
+                Text("Press ⇧⌘3 or ⇧⌘4. A few seconds after the preview goes away, the file gets a name.")
+                    .multilineTextAlignment(.center)
+                if model.status == .namingOne || model.status == .namingBatch {
+                    ProgressView("Naming…")
+                } else {
+                    Label("Watching for a new screenshot", systemImage: "eye").foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+            navigation(next: "Continue")
+        }
+        .onAppear { nav.baseline = model.lastRename?.id }
+    }
+
     private var done: some View {
         VStack(spacing: 14) {
             Image(systemName: model.hasAnyFolder ? "checkmark.circle.fill" : "moon.zzz.fill")
@@ -128,4 +159,4 @@ struct WelcomeView: View {
 }
 
 @MainActor @Observable
-final class WelcomeSteps { var step = 0 }
+final class WelcomeSteps { var step = 0; var baseline: UUID? }

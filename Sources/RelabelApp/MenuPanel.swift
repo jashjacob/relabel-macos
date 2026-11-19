@@ -83,7 +83,7 @@ struct MenuPanelView: View {
             HStack {
                 Button("Tidy Up a Folder") {}.disabled(true)
                 Spacer()
-                Button("Pause") {}.disabled(true)
+                Button(model.isPaused ? "Resume" : "Pause") { model.togglePause() }
             }
             Divider()
             HStack {

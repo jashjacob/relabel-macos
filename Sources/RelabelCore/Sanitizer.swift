@@ -17,9 +17,9 @@ public enum Sanitizer {
         return s
     }
 
-    /// Capitalises the first letter when the model returned all lower case. Leaves mixed-case names alone.
+    /// Capitalises the first letter when the model started with a lower case word.
     public static func sentenceCased(_ s: String) -> String {
-        guard s == s.lowercased(), let f = s.first else { return s }
+        guard let f = s.first, f.isLowercase else { return s }
         return f.uppercased() + s.dropFirst()
     }
 
