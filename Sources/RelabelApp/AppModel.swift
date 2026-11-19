@@ -126,8 +126,10 @@ final class AppModel {
             if prefs.notifications { notify("\(r.oldName) → \(r.newName)") }
         case .failed(let why):
             if job.source != .tidy { pill.showFailure(job, why) }
-        case .kept, .skipped:
-            break
+        case .kept(let why):
+            if job.source == .drop { pill.showMessage("\(job.url.lastPathComponent): \(why).") }
+        case .skipped(let why):
+            if job.source == .drop { pill.showMessage(why) }
         }
     }
 
@@ -156,18 +158,20 @@ final class AppModel {
     /// Files dropped on the panel, the menu bar icon, the app icon, or "Open With". Folders are tidied.
     func handleDrop(_ urls: [URL]) {
         isDraggingFile = false
-        var rejected = 0
+        var rejected = 0, accepted = 0
         var folder: URL?
         for u in urls {
             var isDir: ObjCBool = false
             guard FileManager.default.fileExists(atPath: u.path, isDirectory: &isDir) else { continue }
             if isDir.boolValue { folder = folder ?? u; continue }
             if let kind = FileEligibility.kindForDropped(u) {
+                accepted += 1
                 engine.enqueue(RenameJob(url: u, kind: kind, source: .drop))
             } else {
                 rejected += 1
             }
         }
+        if accepted > 0 { pill.showMessage(accepted == 1 ? "Naming it…" : "Naming \(accepted) files…") }
         if let folder { closePanel(); openTidy(folder) }
         if rejected > 0 { pill.showMessage("Relabel can name images and PDFs. \(rejected == 1 ? "That file was" : "\(rejected) files were") skipped.") }
     }
