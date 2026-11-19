@@ -25,6 +25,16 @@ public struct NamingPreferences: Codable, Sendable, Equatable {
     public var dateStyle: DateStyle = .none
     /// Optional free-text instruction for PDFs, passed to the model and used by Tidy Up.
     public var customPDFInstruction = ""
+    public var notifications = true
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        length = try c.decodeIfPresent(NameLength.self, forKey: .length) ?? .standard
+        includeAppName = try c.decodeIfPresent(Bool.self, forKey: .includeAppName) ?? false
+        dateStyle = try c.decodeIfPresent(DateStyle.self, forKey: .dateStyle) ?? .none
+        customPDFInstruction = try c.decodeIfPresent(String.self, forKey: .customPDFInstruction) ?? ""
+        notifications = try c.decodeIfPresent(Bool.self, forKey: .notifications) ?? true
+    }
 
     public init(length: NameLength = .standard, includeAppName: Bool = false,
                 dateStyle: DateStyle = .none, customPDFInstruction: String = "") {

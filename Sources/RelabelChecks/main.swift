@@ -21,6 +21,7 @@ run("collision handling") { RenameChecks.collisions() }
 run("date handling") { RenameChecks.dates() }
 run("screenshot name matching") { RenameChecks.screenshotNames() }
 run("undo / redo / never overwrite") { try RenameChecks.undoRedo() }
+run("inline edit (user rename)") { try RenameChecks.userRename() }
 run("processed markers") { try RenameChecks.markers() }
 do { try await RenameChecks.endToEnd(); print(failures == 0 ? "ok   watcher + queue + rename end to end" : "see failures above") } catch { failures += 1; print("ERROR e2e \(error)") }
 print(failures == 0 ? "All checks passed" : "\(failures) failure(s)")

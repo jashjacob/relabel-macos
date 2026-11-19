@@ -16,6 +16,10 @@ final class AppModel {
     private(set) var recents: [HistoryRecord] = []
     private(set) var lastRename: HistoryRecord?
     private(set) var isPaused = false
+    let thumbnails = ThumbnailCache()
+    var editingID: UUID?
+    var editText = ""
+    private(set) var rowErrors: [UUID: String] = [:]
     private var queueState: QueueState = .idle
     var prefs = NamingPreferences() {
         didSet {
@@ -117,6 +121,7 @@ final class AppModel {
             lastRename = r
             reloadHistory()
             pill.showRenamed(r)
+            if prefs.notifications { notify("\(r.oldName) → \(r.newName)") }
         case .failed(let why):
             if job.source != .tidy { pill.showFailure(job, why) }
         case .kept, .skipped:
@@ -128,6 +133,53 @@ final class AppModel {
     func undo(_ r: HistoryRecord) -> String? {
         defer { reloadHistory() }
         do { try engine.history.undo(id: r.id); return nil } catch { return error.localizedDescription }
+    }
+
+    // MARK: Recent renames rows
+
+    func undoRow(_ r: HistoryRecord) { run(r) { try self.engine.history.undo(id: r.id) } }
+    func redoRow(_ r: HistoryRecord) { run(r) { try self.engine.history.redo(id: r.id) } }
+
+    func showInFinder(_ r: HistoryRecord) {
+        let url = r.state == .applied ? r.newURL : r.oldURL
+        if FileManager.default.fileExists(atPath: url.path) {
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+        } else {
+            setRowError(r.id, "Couldn't find the file. It was moved or renamed.")
+        }
+    }
+
+    func beginEdit(_ r: HistoryRecord) {
+        editingID = r.id
+        editText = (r.newName as NSString).deletingPathExtension
+    }
+
+    func cancelEdit() { editingID = nil }
+
+    func commitEdit(_ r: HistoryRecord) {
+        let text = editText
+        editingID = nil
+        guard text != (r.newName as NSString).deletingPathExtension else { return }
+        run(r) { try self.engine.history.userRename(id: r.id, to: text) }
+    }
+
+    private func run(_ r: HistoryRecord, _ action: () throws -> HistoryRecord) {
+        rowErrors[r.id] = nil
+        do { _ = try action() } catch { setRowError(r.id, error.localizedDescription) }
+        thumbnails.forget(r.id)
+        reloadHistory()
+    }
+
+    private func setRowError(_ id: UUID, _ text: String) {
+        rowErrors[id] = text
+        Task { try? await Task.sleep(for: .seconds(6)); rowErrors[id] = nil }
+    }
+
+    static func milestoneNote(_ n: Int) -> String? {
+        let marks: [(Int, String)] = [(1000, "1,000 files named. That's a lot of tidy."), (500, "500 files named. Your folders thank you."),
+                                      (100, "100 files named. Nice."), (50, "50 files named."), (10, "10 files named. Off to a good start."),
+                                      (1, "First one named.")]
+        return marks.first { n >= $0.0 }?.1
     }
 
     private func reloadHistory() {
@@ -177,7 +229,7 @@ final class AppModel {
 
     // MARK: Notifications
 
-    private func notify(_ text: String) {
+    func notify(_ text: String) {
         let center = UNUserNotificationCenter.current()
         Task {
             _ = try? await center.requestAuthorization(options: [.alert])

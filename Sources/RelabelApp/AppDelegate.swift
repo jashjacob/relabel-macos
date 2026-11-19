@@ -1,9 +1,10 @@
 import AppKit
 import SwiftUI
+import UserNotifications
 import RelabelCore
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
     let model = AppModel()
     private var statusItem: NSStatusItem!
     private var panel: MenuPanelController!
@@ -13,7 +14,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var welcomeWindow: SingleWindow!
     private static let welcomeKey = "welcomeCompleted"
 
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+        [.banner]
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
+        UNUserNotificationCenter.current().delegate = self
         panel = MenuPanelController(model: model)
         settingsWindow = SingleWindow(title: "Relabel Settings") { [model] in
             NSHostingView(rootView: SettingsView(model: model))
