@@ -67,7 +67,9 @@ public enum NamingModel {
         - Never invent details that are not in the text you are given.
         - No punctuation, no file extension, no quotes, no dates.
         - Keep numbers, years and reference numbers as digits, exactly as written.
-        - Keep company, person and product names and reference numbers capitalised exactly as written in the text. Other words are lower case, except the first word.
+        - Keep acronyms, company, person and product names and reference numbers exactly as written in the text (CNC stays CNC). Other words are lower case, except the first word.
+        - Screenshots are often cropped, so words at the edges may be cut off. Ignore fragments and use the full words and the overall subject.
+        - Name the whole subject of the file, not one line of it.
         - Use plain words in the same language as the text.
         - Put the most useful identifying detail first (who or what it is about), then what kind of file it is.
         """
@@ -112,8 +114,9 @@ public enum NamingModel {
         do {
             let session = LanguageModelSession(instructions: rules)
             let response = try await session.respond(to: prompt(for: ctx, prefs: prefs, examples: examples),
-                                                     generating: GeneratedName.self)
-            let title = Sanitizer.sentenceCased(Sanitizer.cleanTitle(response.content.title))
+                                                     generating: GeneratedName.self,
+                                                     options: GenerationOptions(sampling: .greedy))
+            let title = Sanitizer.sentenceCased(Sanitizer.restoreAcronyms(Sanitizer.cleanTitle(response.content.title), source: ctx.text))
             guard !title.isEmpty else { return (basic, "No better name found. Using basic naming.") }
             return (NamingResult(title: title, category: response.content.category, source: .model), nil)
         } catch {

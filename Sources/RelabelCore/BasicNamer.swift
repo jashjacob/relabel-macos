@@ -42,7 +42,13 @@ public enum BasicNamer {
         guard let first = good.first else { return nil }
         var words = first.split(separator: " ").map(String.init)
         if words.count < 3, good.count > 1 { words += good[1].split(separator: " ").map(String.init) }
-        return words.prefix(maxWords).joined(separator: " ")
+        let joined = words.prefix(maxWords).joined(separator: " ")
+        // ALL CAPS headings read badly as file names.
+        if joined == joined.uppercased(), joined.contains(where: \.isLetter) {
+            let lower = joined.lowercased()
+            return lower.prefix(1).uppercased() + lower.dropFirst()
+        }
+        return joined
     }
 
     static func isMeaningful(_ line: String) -> Bool {
@@ -63,7 +69,7 @@ public enum BasicNamer {
             ("invoice", ["invoice", "amount due", "bill to"]), ("statement", ["statement", "account balance"]),
             ("contract", ["agreement", "contract", "hereinafter"]), ("error", ["error", "failed", "exception"]),
             ("code", ["func ", "import ", "def ", "class "]), ("chart", ["chart", "graph"]),
-            ("report", ["report", "summary", "quarter"]), ("manual", ["manual", "instructions", "installation"]),
+            ("report", ["report", "summary", "quarter"]), ("manual", ["user manual", "instruction manual", "user guide", "installation guide"]),
         ]
         for (cat, keys) in table where keys.contains(where: t.contains) { return cat }
         return ctx.kind == .pdf ? "document" : "website"

@@ -23,6 +23,26 @@ public enum Sanitizer {
         return f.uppercased() + s.dropFirst()
     }
 
+    /// The model tends to lower-case acronyms ("Cnc"). Restore ones written in capitals inside normal sentences
+    /// of the source text (not from ALL CAPS headings, where every word is capitals).
+    public static func restoreAcronyms(_ title: String, source: String) -> String {
+        var acronyms: [String: String] = [:]
+        for line in source.split(whereSeparator: \.isNewline) where line.contains(where: \.isLowercase) {
+            for raw in line.split(whereSeparator: { !$0.isLetter && !$0.isNumber }) {
+                let w = String(raw)
+                if (2...5).contains(w.count), w == w.uppercased(), w.filter(\.isLetter).count >= 2 {
+                    acronyms[w.lowercased()] = w
+                }
+            }
+        }
+        guard !acronyms.isEmpty else { return title }
+        return title.split(separator: " ", omittingEmptySubsequences: false).map { word -> String in
+            let w = String(word)
+            if let a = acronyms[w.lowercased()], w != a, w == w.lowercased() || w == w.capitalized { return a }
+            return w
+        }.joined(separator: " ")
+    }
+
     public static func dateString(_ date: Date, calendar: Calendar = .current) -> String {
         let c = calendar.dateComponents([.year, .month, .day], from: date)
         return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
