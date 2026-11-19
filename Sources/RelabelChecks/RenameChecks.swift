@@ -19,6 +19,9 @@ enum RenameChecks {
         check(Sanitizer.sentenceCased("hello world") == "Hello world" && Sanitizer.sentenceCased("CNC lathe") == "CNC lathe", "sentence case")
         check(Sanitizer.restoreAcronyms("Cnc system", source: "fit a CNC with drives") == "CNC system", "acronym restore")
         check(Sanitizer.restoreAcronyms("Scope of work", source: "SCOPE OF WORK") == "Scope of work", "heading not acronym")
+        check(Sanitizer.restoreAcronyms("Cnc spares reports", source: "CNC SPARES\nSPARES REPORT") == "CNC spares reports", "acronym in caps table")
+        check(Sanitizer.restoreAcronyms("Of the new plan", source: "OF THE NEW PLAN") == "Of the new plan", "common words stay")
+        check(Sanitizer.restoreAcronyms("Usb adapter", source: "USB ADAPTER") == "USB adapter", "3-letter acronym in caps line")
     }
 
     static func collisions() {
@@ -93,6 +96,32 @@ enum RenameChecks {
         write(f3, "squatter")
         do { _ = try h.undo(id: r3.id); check(false, "should fail") } catch { check(error is HistoryError, "name taken") }
         check((try? String(contentsOf: f3, encoding: .utf8)) == "squatter", "squatter untouched")
+    }
+
+    static func userRename() throws {
+        let d = scratch(); defer { try? FileManager.default.removeItem(at: d) }
+        let h = RenameHistory(storeURL: d.appendingPathComponent("h.json"))
+        let f = d.appendingPathComponent("raw.png"); write(f)
+        let r = try h.rename(from: f, to: d.appendingPathComponent("Relabel name.png"), source: .auto, kind: .screenshot, relabelName: "Relabel name.png", summary: "s")
+        let e1 = try h.userRename(id: r.id, to: "My own: name?")
+        check(e1.newName == "My own name.png" && e1.userName == "My own name.png", "edited, sanitized, extension kept: \(e1.newName)")
+        check(try h.userRename(id: r.id, to: "Typed with ext.PNG").newName == "Typed with ext.png", "typed extension not doubled")
+        let other = d.appendingPathComponent("Taken.png"); write(other)
+        do { _ = try h.userRename(id: r.id, to: "Taken"); check(false, "should clash") } catch {
+            check(error.localizedDescription == "Couldn't rename. A file with that name already exists.", "clash msg: \(error.localizedDescription)")
+        }
+        do { _ = try h.userRename(id: r.id, to: "///"); check(false, "should be empty") } catch { check((error as? HistoryError) == .emptyName, "empty name") }
+        check(try h.userRename(id: r.id, to: "TYPED WITH EXT").newName == "TYPED WITH EXT.png", "case-only change")
+        check(FileManager.default.fileExists(atPath: other.path), "other file untouched")
+        // undo still works after an edit and restores the very first name
+        _ = try h.undo(id: r.id)
+        check(FileManager.default.fileExists(atPath: f.path), "undo after edit")
+        // moved by user -> clear message
+        _ = try h.redo(id: r.id)
+        try FileManager.default.moveItem(at: h.record(id: r.id)!.newURL, to: d.appendingPathComponent("elsewhere.png"))
+        do { _ = try h.userRename(id: r.id, to: "x"); check(false, "should fail") } catch {
+            check(error.localizedDescription == "Couldn't rename. The file was moved or renamed.", "moved msg")
+        }
     }
 
     static func markers() throws {

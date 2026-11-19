@@ -18,6 +18,8 @@ public struct HistoryRecord: Codable, Identifiable, Sendable, Equatable {
     /// What Relabel proposed, and a short context summary, kept for learning from the user's own renames.
     public var relabelName: String
     public var summary: String
+    /// Set when the user edited the name Relabel gave (used to learn from corrections).
+    public var userName: String? = nil
 
     public var oldName: String { (oldPath as NSString).lastPathComponent }
     public var newName: String { (newPath as NSString).lastPathComponent }
@@ -26,12 +28,13 @@ public struct HistoryRecord: Codable, Identifiable, Sendable, Equatable {
 }
 
 public enum HistoryError: Error, LocalizedError, Equatable {
-    case movedOrRenamed(verb: String), changed(verb: String), nameTaken(verb: String), unknownRecord
+    case movedOrRenamed(verb: String), changed(verb: String), nameTaken(verb: String), emptyName, unknownRecord
     public var errorDescription: String? {
         switch self {
         case .movedOrRenamed(let v): "Couldn't \(v). The file was moved or renamed."
         case .changed(let v): "Couldn't \(v). The file has changed since."
         case .nameTaken(let v): "Couldn't \(v). A file with that name already exists."
+        case .emptyName: "Couldn't rename. The name can't be empty."
         case .unknownRecord: "Couldn't find that rename."
         }
     }
@@ -85,6 +88,40 @@ public final class RenameHistory: @unchecked Sendable {
     public func undo(id: UUID) throws -> HistoryRecord { try move(id: id, forward: false) }
     @discardableResult
     public func redo(id: UUID) throws -> HistoryRecord { try move(id: id, forward: true) }
+
+    /// The user edited the name by hand (inline in the menu). Keeps the extension, never overwrites.
+    @discardableResult
+    public func userRename(id: UUID, to typed: String) throws -> HistoryRecord {
+        guard var rec = record(id: id) else { throw HistoryError.unknownRecord }
+        let fm = FileManager.default
+        guard rec.state == .applied, fm.fileExists(atPath: rec.newPath), FileIdentity.key(rec.newURL) == rec.inodeKey else {
+            throw HistoryError.movedOrRenamed(verb: "rename")
+        }
+        let ext = rec.newURL.pathExtension
+        var text = typed
+        if !ext.isEmpty, text.lowercased().hasSuffix("." + ext.lowercased()) { text.removeLast(ext.count + 1) }
+        let base = Sanitizer.cleanTitle(text)
+        guard !base.isEmpty else { throw HistoryError.emptyName }
+        let dest = rec.newURL.deletingLastPathComponent().appendingPathComponent(ext.isEmpty ? base : base + "." + ext)
+        if dest.path == rec.newPath { return rec }
+        if fm.fileExists(atPath: dest.path) {
+            // Same file differing only by case is fine on a case-insensitive volume; anything else is a clash.
+            guard FileIdentity.key(dest) == rec.inodeKey else { throw HistoryError.nameTaken(verb: "rename") }
+            let temp = rec.newURL.deletingLastPathComponent().appendingPathComponent(".relabel-\(UUID().uuidString)")
+            try fm.moveItem(at: rec.newURL, to: temp)
+            try fm.moveItem(at: temp, to: dest)
+        } else {
+            try fm.moveItem(at: rec.newURL, to: dest)
+        }
+        rec.newPath = dest.path
+        rec.userName = dest.lastPathComponent
+        rec.modified = FileIdentity.modified(dest) ?? rec.modified
+        lock.withLock {
+            if let i = records.firstIndex(where: { $0.id == id }) { records[i] = rec }
+            saveLocked()
+        }
+        return rec
+    }
 
     private func move(id: UUID, forward: Bool) throws -> HistoryRecord {
         let verb = forward ? "redo" : "undo"

@@ -23,17 +23,30 @@ public enum Sanitizer {
         return f.uppercased() + s.dropFirst()
     }
 
-    /// The model tends to lower-case acronyms ("Cnc"). Restore ones written in capitals inside normal sentences
-    /// of the source text (not from ALL CAPS headings, where every word is capitals).
+    private static let shortWords: Set<String> = ["THE", "AND", "FOR", "ALL", "NEW", "OUR", "USE", "NOT", "ARE", "BUT", "YOU",
+        "ANY", "CAN", "HAS", "WAS", "ONE", "TWO", "OUT", "OFF", "NOW", "MAY", "PER", "VIA", "WHO", "HOW", "WHY", "OF", "TO",
+        "IN", "ON", "AT", "BY", "AN", "IS", "IT", "AS", "OR", "NO", "IF", "SO", "DO", "UP", "WE", "BE", "MY", "ME"]
+
+    /// The model tends to lower-case acronyms ("Cnc"). Restore ones written in capitals in the source text.
+    /// Inside ordinary sentences any 2-5 letter capitals count. In ALL CAPS lines (headings) only 3-letter words that
+    /// aren't common words count, or words repeated at least twice, so "SCOPE OF WORK" doesn't turn "of" into "OF".
     public static func restoreAcronyms(_ title: String, source: String) -> String {
         var acronyms: [String: String] = [:]
-        for line in source.split(whereSeparator: \.isNewline) where line.contains(where: \.isLowercase) {
+        var capsLineCounts: [String: Int] = [:]
+        for line in source.split(whereSeparator: \.isNewline) {
+            let mixed = line.contains(where: \.isLowercase)
             for raw in line.split(whereSeparator: { !$0.isLetter && !$0.isNumber }) {
                 let w = String(raw)
-                if (2...5).contains(w.count), w == w.uppercased(), w.filter(\.isLetter).count >= 2 {
-                    acronyms[w.lowercased()] = w
+                guard (2...5).contains(w.count), w == w.uppercased(), w.filter(\.isLetter).count >= 2 else { continue }
+                if mixed {
+                    if !shortWords.contains(w) { acronyms[w.lowercased()] = w }
+                } else {
+                    capsLineCounts[w, default: 0] += 1
                 }
             }
+        }
+        for (w, n) in capsLineCounts where !shortWords.contains(w) && (w.count == 3 || n >= 2) {
+            acronyms[w.lowercased()] = acronyms[w.lowercased()] ?? w
         }
         guard !acronyms.isEmpty else { return title }
         return title.split(separator: " ", omittingEmptySubsequences: false).map { word -> String in

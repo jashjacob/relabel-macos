@@ -2,14 +2,20 @@ import SwiftUI
 import AppKit
 import RelabelCore
 
+/// Non-activating, but able to take keyboard focus so names can be edited inline.
+final class KeyablePanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+}
+
 /// Custom popover window (not an NSMenu) shown under the status item.
 @MainActor
 final class MenuPanelController {
-    private let panel: NSPanel
+    private let panel: KeyablePanel
+    private var resizeTask: Task<Void, Never>?
     private var monitor: Any?
 
     init(model: AppModel) {
-        panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 340, height: 380),
+        panel = KeyablePanel(contentRect: NSRect(x: 0, y: 0, width: 340, height: 380),
                         styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
         panel.isFloatingPanel = true
         panel.level = .statusBar
@@ -36,12 +42,27 @@ final class MenuPanelController {
         let x = min(max(b.midX - panel.frame.width / 2, 8), (win.screen?.visibleFrame.maxX ?? 2000) - panel.frame.width - 8)
         panel.setFrameOrigin(NSPoint(x: x, y: b.minY - panel.frame.height - 6))
         panel.orderFrontRegardless()
+        panel.makeKey()
+        resizeTask = Task { [weak self] in          // follow the content as rows come and go
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(250))
+                guard let self, let host = panel.contentView else { return }
+                let size = host.fittingSize
+                if abs(size.height - panel.frame.height) > 1 {
+                    var f = panel.frame
+                    f.origin.y += f.height - size.height
+                    f.size = size
+                    panel.setFrame(f, display: true, animate: false)
+                }
+            }
+        }
         monitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
             Task { @MainActor in self?.close() }
         }
     }
 
     func close() {
+        resizeTask?.cancel(); resizeTask = nil
         panel.orderOut(nil)
         if let m = monitor { NSEvent.removeMonitor(m); monitor = nil }
     }
@@ -73,10 +94,7 @@ struct MenuPanelView: View {
                 Button("Choose Folders…") { closeAndOpenSettings() }
             }
 
-            Text("Recent renames").font(.subheadline).foregroundStyle(.secondary)
-            Text("Nothing named yet.")
-                .font(.callout).foregroundStyle(.tertiary)
-                .frame(maxWidth: .infinity, minHeight: 60)
+            RecentRenamesList(model: model)
 
             dropArea
 
@@ -93,6 +111,9 @@ struct MenuPanelView: View {
             }
             Text("Relabel has named \(model.namedCount) files for you so far")
                 .font(.caption).foregroundStyle(.secondary)
+            if let note = AppModel.milestoneNote(model.namedCount) {
+                Text(note).font(.caption2).foregroundStyle(.tertiary)
+            }
             Text("All 100% privately on your Mac").font(.caption2).foregroundStyle(.tertiary)
         }
         .padding(16)
