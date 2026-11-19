@@ -116,7 +116,7 @@ public enum NamingModel {
             let response = try await session.respond(to: prompt(for: ctx, prefs: prefs, examples: examples),
                                                      generating: GeneratedName.self,
                                                      options: GenerationOptions(sampling: .greedy))
-            let title = Sanitizer.sentenceCased(Sanitizer.restoreAcronyms(Sanitizer.cleanTitle(response.content.title), source: ctx.text))
+            let title = Sanitizer.restoreAcronyms(Sanitizer.sentenceCased(Sanitizer.cleanTitle(response.content.title)), source: ctx.text)
             guard !title.isEmpty else { return (basic, "No better name found. Using basic naming.") }
             return (NamingResult(title: title, category: response.content.category, source: .model), nil)
         } catch {
