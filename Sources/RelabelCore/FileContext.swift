@@ -1,4 +1,11 @@
 import Foundation
+import CoreGraphics
+
+/// A downscaled copy of the image, kept in memory only to show the on-device model.
+public struct ImageBox: @unchecked Sendable {
+    public let image: CGImage
+    public init(_ image: CGImage) { self.image = image }
+}
 
 public enum FileKind: String, Codable, Sendable { case screenshot, pdf }
 
@@ -14,6 +21,8 @@ public struct FileContext: Sendable {
     public var pdfCreated: Date?
     public var usedOCR = false
     public var fileDate: Date
+    /// Downscaled picture (screenshot, or first PDF page) for models that can look at images.
+    public var image: ImageBox?
 
     public init(kind: FileKind, originalName: String, text: String, labels: [String] = [], appName: String? = nil,
                 pdfTitle: String? = nil, pdfAuthor: String? = nil, pdfCreated: Date? = nil,

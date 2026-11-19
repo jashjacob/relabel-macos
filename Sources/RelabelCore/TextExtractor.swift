@@ -46,8 +46,10 @@ public enum TextExtractor {
         guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
               let image = CGImageSourceCreateImageAtIndex(src, 0, nil) else { throw ExtractionError.notAnImage }
         let (text, labels) = try await recognize(image, classify: true)
-        return FileContext(kind: .screenshot, originalName: url.lastPathComponent, text: text, labels: labels,
-                           appName: appName, usedOCR: true, fileDate: creationDate(url))
+        var ctx = FileContext(kind: .screenshot, originalName: url.lastPathComponent, text: text, labels: labels,
+                              appName: appName, usedOCR: true, fileDate: creationDate(url))
+        ctx.image = downscaled(src).map(ImageBox.init)
+        return ctx
     }
 
     // MARK: PDFs
@@ -70,11 +72,13 @@ public enum TextExtractor {
         let attrs = doc.documentAttributes ?? [:]
         let title = (attrs[PDFDocumentAttribute.titleAttribute] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
         let author = (attrs[PDFDocumentAttribute.authorAttribute] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
-        return FileContext(kind: .pdf, originalName: url.lastPathComponent, text: parts.joined(separator: "\n\n"),
-                           pdfTitle: title?.isEmpty == false ? title : nil,
-                           pdfAuthor: author?.isEmpty == false ? author : nil,
-                           pdfCreated: attrs[PDFDocumentAttribute.creationDateAttribute] as? Date,
-                           usedOCR: usedOCR, fileDate: creationDate(url))
+        var ctx = FileContext(kind: .pdf, originalName: url.lastPathComponent, text: parts.joined(separator: "\n\n"),
+                              pdfTitle: title?.isEmpty == false ? title : nil,
+                              pdfAuthor: author?.isEmpty == false ? author : nil,
+                              pdfCreated: attrs[PDFDocumentAttribute.creationDateAttribute] as? Date,
+                              usedOCR: usedOCR, fileDate: creationDate(url))
+        if let first = doc.page(at: 0), let cg = render(first, maxSide: CGFloat(modelImageSide)) { ctx.image = ImageBox(cg) }
+        return ctx
     }
 
     // MARK: Vision
@@ -112,9 +116,19 @@ public enum TextExtractor {
             .map { $0.identifier.replacingOccurrences(of: "_", with: " ") }
     }
 
-    static func render(_ page: PDFPage) -> CGImage? {
+    /// Longest side of the picture shown to the model. Smaller is faster.
+    public static let modelImageSide = 1024
+
+    static func downscaled(_ src: CGImageSource, maxSide: Int = modelImageSide) -> CGImage? {
+        let opts: [CFString: Any] = [kCGImageSourceCreateThumbnailFromImageAlways: true,
+                                     kCGImageSourceThumbnailMaxPixelSize: maxSide,
+                                     kCGImageSourceCreateThumbnailWithTransform: true]
+        return CGImageSourceCreateThumbnailAtIndex(src, 0, opts as CFDictionary)
+    }
+
+    static func render(_ page: PDFPage, maxSide: CGFloat = 2200) -> CGImage? {
         let box = page.bounds(for: .mediaBox)
-        let scale = min(2.0, 2200 / max(box.width, box.height))
+        let scale = min(2.0, maxSide / max(box.width, box.height))
         let size = NSSize(width: box.width * scale, height: box.height * scale)
         return page.thumbnail(of: size, for: .mediaBox).cgImage(forProposedRect: nil, context: nil, hints: nil)
     }
