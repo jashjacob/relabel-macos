@@ -39,3 +39,10 @@ public enum AppStatus: Equatable, Sendable {
 }
 
 public enum IconState: Sendable { case idle, naming, paused, error }
+
+public enum FolderMessages {
+    public static let screenshotsLost = "Can't reach your screenshots folder. Choose it again to keep naming."
+    public static func pdfLost(_ path: String) -> String {
+        "Can't reach your PDF folder (\(path)). Choose it again to keep naming."
+    }
+}

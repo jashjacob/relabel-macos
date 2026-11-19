@@ -1,0 +1,20 @@
+import Foundation
+
+nonisolated(unsafe) var failures = 0
+func check(_ ok: Bool, _ msg: String = "check failed", line: Int = #line) {
+    if !ok { failures += 1; print("  FAIL line \(line): \(msg)") }
+}
+func run(_ name: String, _ body: () throws -> Void) {
+    let before = failures
+    do { try body() } catch { failures += 1; print("  ERROR \(error)") }
+    print(failures == before ? "ok   \(name)" : "FAIL \(name)")
+}
+
+run("screenshots replace, PDFs append") { try FolderBookmarksChecks.screenshotsReplacePDFsAppend() }
+run("persists across instances") { try FolderBookmarksChecks.persistsAcrossInstances() }
+run("deleted folder is lost") { try FolderBookmarksChecks.deletedFolderIsReportedLost() }
+run("moved folder is followed") { try FolderBookmarksChecks.movedFolderIsFollowed() }
+run("rejects files") { try FolderBookmarksChecks.rejectsFiles() }
+run("suggested location fallback") { FolderBookmarksChecks.suggestedLocationFallsBackToDesktop() }
+print(failures == 0 ? "All checks passed" : "\(failures) failure(s)")
+exit(failures == 0 ? 0 : 1)

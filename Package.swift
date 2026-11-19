@@ -11,5 +11,6 @@ let package = Package(
     targets: [
         .target(name: "RelabelCore"),
         .executableTarget(name: "RelabelApp", dependencies: ["RelabelCore"]),
+        .executableTarget(name: "RelabelChecks", dependencies: ["RelabelCore"]),   // CLT has no XCTest/Testing: run with `swift run RelabelChecks`
     ]
 )

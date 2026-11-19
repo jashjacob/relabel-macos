@@ -59,6 +59,20 @@ struct MenuPanelView: View {
             .accessibilityElement(children: .combine)
             .accessibilityLabel(model.status.accessibilityLabel)
 
+            ForEach(model.lostMessages, id: \.self) { msg in
+                HStack(alignment: .top, spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                    Text(msg).font(.callout)
+                }
+                .accessibilityElement(children: .combine)
+            }
+            if !model.lostMessages.isEmpty {
+                Button("Choose Folder Again…") { closeAndOpenSettings() }
+            } else if !model.hasAnyFolder {
+                Text("Relabel does nothing until you choose a folder.").font(.callout).foregroundStyle(.secondary)
+                Button("Choose Folders…") { closeAndOpenSettings() }
+            }
+
             Text("Recent renames").font(.subheadline).foregroundStyle(.secondary)
             Text("Nothing named yet.")
                 .font(.callout).foregroundStyle(.tertiary)
@@ -73,7 +87,7 @@ struct MenuPanelView: View {
             }
             Divider()
             HStack {
-                Button("Settings") {}.disabled(true)
+                Button("Settings") { closeAndOpenSettings() }
                 Spacer()
                 Button("Quit") { NSApplication.shared.terminate(nil) }.keyboardShortcut("q")
             }
@@ -84,6 +98,11 @@ struct MenuPanelView: View {
         .padding(16)
         .frame(width: 340)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    private func closeAndOpenSettings() {
+        model.closePanel()
+        model.openSettings()
     }
 
     private var dropArea: some View {

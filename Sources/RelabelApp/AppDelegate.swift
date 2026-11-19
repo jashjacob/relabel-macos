@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 import RelabelCore
 
 @MainActor
@@ -8,9 +9,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var panel: MenuPanelController!
     private var timer: Timer?
     private var style: IconStyle = .face
+    private var settingsWindow: SingleWindow!
+    private var welcomeWindow: SingleWindow!
+    private static let welcomeKey = "welcomeCompleted"
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         panel = MenuPanelController(model: model)
+        settingsWindow = SingleWindow(title: "Relabel Settings") { [model] in
+            NSHostingView(rootView: SettingsView(model: model))
+        }
+        welcomeWindow = SingleWindow(title: "Welcome to Relabel") { [model, unowned self] in
+            NSHostingView(rootView: WelcomeView(model: model) { [weak self] in self?.welcomeWindow.close() })
+        }
+        welcomeWindow.onClose = { UserDefaults.standard.set(true, forKey: AppDelegate.welcomeKey) }
+        model.openSettings = { [unowned self] in settingsWindow.show() }
+        model.openWelcome = { [unowned self] in welcomeWindow.show() }
+        model.closePanel = { [unowned self] in panel.close() }
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let b = statusItem.button {
             b.target = self; b.action = #selector(togglePanel)
@@ -18,11 +32,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         refreshIcon()
         timer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.model.tick += 1; self?.refreshIcon() }
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.model.tick += 1
+                if self.model.tick % 20 == 0 { self.model.refreshFolders() }   // notice moved/deleted folders within ~5s
+                self.refreshIcon()
+            }
         }
         // Dev hook: RELABEL_STATE=naming|paused|error previews icon states; RELABEL_STYLE=scan.
         let env = ProcessInfo.processInfo.environment
         if env["RELABEL_STYLE"] == "scan" { style = .scanLine }
+        if !UserDefaults.standard.bool(forKey: Self.welcomeKey) || env["RELABEL_WELCOME"] == "1" {
+            DispatchQueue.main.async { [self] in welcomeWindow.show() }
+        }
         switch env["RELABEL_STATE"] {
         case "naming": model.status = .namingOne
         case "paused": model.status = .paused
