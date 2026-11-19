@@ -61,7 +61,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             MainActor.assumeIsolated {
                 guard let self else { return }
                 self.model.tick += 1
-                if self.model.tick % 20 == 0 { self.model.refreshFolders(); self.model.refreshAI() }   // notice moved/deleted folders within ~5s
+                if self.model.tick % 20 == 0 { self.model.refreshFolders(); self.model.refreshAI(); self.model.checkExternalRenames() }   // notice moved/deleted folders within ~5s
                 self.refreshIcon()
             }
         }

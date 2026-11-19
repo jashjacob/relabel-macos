@@ -54,6 +54,15 @@ case "spike":
                          Date().timeIntervalSince(t0), r.result.title, r.result.category, "\(r.result.source)"))
             if let n = r.note { print("          note: \(n)") }
         }
+        let learning = LearningStore()
+        if learning.count > 0 {
+            let help = learning.promptHelp(for: ctx)
+            let t0 = Date()
+            let r = await NamingModel.name(for: ctx, prefs: NamingPreferences(), examples: help.examples, styleHint: help.style)
+            print(String(format: "with learning  %5.1fs  %@   (%d corrections; style: %@)", Date().timeIntervalSince(t0), r.result.title,
+                         learning.count, help.style ?? "not enough yet"))
+            for e in help.examples { print("          example: \(e)") }
+        }
         for length in NameLength.allCases {
             let prefs = NamingPreferences(length: length, includeAppName: appName != nil)
             let r = await NamingModel.name(for: ctx, prefs: prefs)
