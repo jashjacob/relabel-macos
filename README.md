@@ -40,7 +40,7 @@ Examples are illustrations of the idea.
 ## Install
 
 Paste into Terminal. It downloads Relabel, puts it in `~/Applications` and opens it. Because it comes through
-Terminal, macOS does not show an unidentified developer warning. (The app is not notarized yet.)
+Terminal, macOS does not show an unidentified developer warning.
 
 ```bash
 curl -L https://github.com/jashjacob/relabel-macos/releases/latest/download/Relabel-arm64.zip -o /tmp/Relabel.zip && \
