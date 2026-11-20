@@ -15,6 +15,7 @@ func usage() -> Never {
       relabel spike <file> [--app <frontmost app>] [--prompt]   names for all three lengths + basic fallback
       relabel watch <folder> [--kind screenshots|pdf] [--seconds N]   name new files as they arrive
       relabel tidy <folder> [--dry-run] [--length ...] [--date none|start|end] [--all]   name a whole folder
+      relabel eval [cases.json] [--text-only]                   score naming on the test set (Evals/)
       relabel history                                           recent renames
       relabel undo                                              undo the latest rename
     """)
@@ -134,6 +135,45 @@ case "tidy":
     let result = TidyPlanner.apply(items, prefs: prefs, history: history, markers: markers)
     print("Renamed \(result.records.count) files. Undo with: relabel undo (once per file)")
     for f in result.failures { print("FAILED \(f.name): \(f.reason)") }
+
+case "eval":
+    let casesURL = expand(args.count >= 2 && !args[1].hasPrefix("--") ? args[1] : "Evals/cases.json")
+    struct EvalCase: Decodable { var match: String; var must: [[String]]; var mustNot: [String]? }
+    struct EvalFile: Decodable { var ui: [String]; var cases: [EvalCase] }
+    guard let data = try? Data(contentsOf: casesURL), let file = try? JSONDecoder().decode(EvalFile.self, from: data) else {
+        print("Can't read \(casesURL.path)"); exit(1)
+    }
+    let root = casesURL.deletingLastPathComponent().deletingLastPathComponent()
+    let dirs = ["Evals/images", "Samples", "Fixtures"].map { root.appendingPathComponent($0) }
+    let textOnly = args.contains("--text-only")
+    print("Warming up text recognition...")
+    await TextExtractor.warmUp()
+    var passed = 0, ran = 0
+    let only = option("--only")
+    for c in file.cases where only == nil || c.match.contains(only!) {
+        let found = dirs.compactMap { try? FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) }
+            .flatMap { $0 }.first { $0.lastPathComponent.contains(c.match) }
+        guard let url = found else { print("SKIP   \(c.match) (file not found)"); continue }
+        do {
+            let ctx = url.pathExtension.lowercased() == "pdf" ? try await TextExtractor.pdfContext(url: url)
+                                                               : try await TextExtractor.screenshotContext(url: url)
+            let t0 = Date()
+            var prefs = NamingPreferences(); prefs.useImage = !textOnly
+            let r = await NamingModel.name(for: ctx, prefs: prefs, forceTextOnly: textOnly)
+            let title = r.result.title, low = title.lowercased()
+            var problems: [String] = []
+            for group in c.must where !group.contains(where: { low.contains($0.lowercased()) }) { problems.append("missing " + group.joined(separator: "/")) }
+            let banned = Set(file.ui + (c.mustNot ?? []))
+            let words = Set(low.split(whereSeparator: { !$0.isLetter }).map(String.init))
+            for b in banned where words.contains(b) { problems.append("has '\(b)'") }
+            if title.split(separator: " ").count > 10 { problems.append("too long") }
+            if r.result.source == .fallback { problems.append("basic naming") }
+            ran += 1; if problems.isEmpty { passed += 1 }
+            print(String(format: "%@ %4.1fs  %@  <- %@%@", problems.isEmpty ? "PASS" : "FAIL", Date().timeIntervalSince(t0), title.padding(toLength: 52, withPad: " ", startingAt: 0), c.match,
+                         problems.isEmpty ? "" : "   (" + problems.joined(separator: "; ") + ")"))
+        } catch { print("ERROR  \(c.match): \(error.localizedDescription)") }
+    }
+    print("Score: \(passed) / \(ran)")
 
 case "history":
     for r in RenameHistory().recent(20) {

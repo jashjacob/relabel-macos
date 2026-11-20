@@ -56,6 +56,28 @@ public enum Sanitizer {
         }.joined(separator: " ")
     }
 
+    /// The model sometimes lower-cases place and brand names. Restore words the source writes with a capital in
+    /// the middle of a line (never only at the start of a line or cell) and never in lower case.
+    public static func restoreProperNames(_ title: String, source: String) -> String {
+        var caps: [String: String] = [:]
+        var lowers = Set<String>()
+        for line in source.split(whereSeparator: \.isNewline) {
+            for cell in line.components(separatedBy: " | ") {
+                let words = cell.split(whereSeparator: { !$0.isLetter }).map(String.init)
+                for (i, w) in words.enumerated() where w.count >= 3 {
+                    if w == w.lowercased() { lowers.insert(w) }
+                    else if i > 0, w == w.capitalized, !shortWords.contains(w.uppercased()) { caps[w.lowercased()] = w }
+                }
+            }
+        }
+        guard !caps.isEmpty else { return title }
+        return title.split(separator: " ", omittingEmptySubsequences: false).enumerated().map { (i, word) -> String in
+            let w = String(word)
+            if i > 0, w == w.lowercased(), let c = caps[w], !lowers.contains(w) { return c }
+            return w
+        }.joined(separator: " ")
+    }
+
     public static func dateString(_ date: Date, calendar: Calendar = .current) -> String {
         let c = calendar.dateComponents([.year, .month, .day], from: date)
         return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)

@@ -103,7 +103,7 @@ do {
     var c = Canvas(size: NSSize(width: 900, height: 340))
     let lines = ["$ python import_orders.py", "Traceback (most recent call last):", "  File \"import_orders.py\", line 27, in <module>",
                  "    total = sum(row[\"amount\"] for row in rows)", "KeyError: 'amount'", "$ "]
-    for (i, l) in lines.enumerated() { c.text(l, 24, CGFloat(24 + i * 30), 18, mono: true, color: i == 4 ? .systemRed : .white) }
+    for (i, l) in lines.enumerated() { c.text(l, 24, CGFloat(24 + i * 30), 18, color: i == 4 ? .systemRed : .white, mono: true) }
     c.save("terminal-keyerror.png", bg: NSColor(white: 0.1, alpha: 1))
 }
 

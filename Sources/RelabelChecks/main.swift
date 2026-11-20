@@ -32,6 +32,8 @@ run("learning similarity (embeddings)") { LearningChecks.similarity() }
 run("style profile") { LearningChecks.style() }
 run("detect renames in Finder") { try LearningChecks.detection() }
 run("prompt includes learning") { LearningChecks.promptHelp() }
+run("OCR rows") { NamingQualityChecks.rows() }
+run("title checks") { NamingQualityChecks.titles() }
 run("processed markers") { try RenameChecks.markers() }
 do { try await RenameChecks.hold(); do { try await ExtractionChecks.extraction(); print(failures == 0 ? "ok   text extraction on fixtures" : "see failures above") } catch { failures += 1; print("ERROR extraction \(error)") }
 do { try await ExtractionChecks.hangProtection(); print(failures == 0 ? "ok   hung OCR is killed, next file works" : "see failures above") } catch { failures += 1; print("ERROR hang \(error)") }
