@@ -25,11 +25,13 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:20px 0
 .brand img{width:30px;height:30px}
 nav .links{display:flex;gap:22px;font-size:15px}
 nav .links a{text-decoration:none;color:var(--ink-2)} nav .links a:hover{color:var(--ink)}
+nav .links a.star{color:var(--ink);font-weight:600}
+nav .links a.star:hover{text-decoration:underline}
+#starCount{margin-left:4px;color:var(--ink-2);font-weight:500}
 @media(max-width:560px){nav .links a:not(.gh){display:none}}
 
 .hero{padding:44px 0 28px;text-align:center}
-.eyebrow{display:inline-flex;gap:8px;align-items:center;font:13px var(--mono);color:var(--ink-2);background:var(--paper-2);border:1px solid var(--line);padding:6px 12px;border-radius:99px}
-.eyebrow i{width:8px;height:8px;border-radius:50%;background:var(--ok);display:block}
+.eyebrow{display:block;font:14px var(--mono);color:var(--ink-2);letter-spacing:.02em}
 h1{font:600 clamp(36px,6.4vw,68px)/1.05 var(--serif);letter-spacing:-.02em;margin:22px auto 0;max-width:15em}
 h1 .ugly{font:500 .52em/1.2 var(--mono);display:block;color:var(--ink-2);text-decoration:line-through;text-decoration-color:var(--scan);text-decoration-thickness:2px;margin-bottom:.5em;letter-spacing:0;overflow-wrap:anywhere}
 .lead{max-width:36em;margin:22px auto 0;color:var(--ink-2);font-size:19px}
@@ -57,8 +59,8 @@ h1 .ugly{font:500 .52em/1.2 var(--mono);display:block;color:var(--ink-2);text-de
 .name{font:15px/1.35 var(--mono);min-width:0;overflow-wrap:anywhere}
 .name small{display:block;font:12px var(--sans);color:var(--ink-2);margin-top:3px}
 .row.done .name{color:var(--ink)}
-.row .tag{margin-left:auto;flex:none;font:12px var(--mono);padding:3px 9px;border-radius:99px;background:var(--paper-2);color:var(--ink-2);opacity:0;transition:opacity .3s}
-.row.done .tag{opacity:1;background:#dff3e8;color:#14623f}
+.row .tag{margin-left:auto;flex:none;font:13px var(--mono);color:var(--ink-2);opacity:0;transition:opacity .3s}
+.row.done .tag{opacity:1;color:var(--ok)}
 .scan{position:absolute;left:0;right:0;height:3px;background:var(--scan);box-shadow:0 0 22px 6px var(--scan-soft),0 0 2px var(--scan);top:0;opacity:0;pointer-events:none;border-radius:2px}
 .replay{font:13px var(--sans);background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:5px 11px;cursor:pointer}
 .replay:hover{background:var(--paper)}
@@ -103,7 +105,7 @@ h2{font:600 clamp(28px,4.4vw,44px)/1.1 var(--serif);letter-spacing:-.015em;margi
 .install{background:var(--paper-2);border:1px solid var(--line);border-radius:24px;padding:34px}
 .install ol{padding-left:20px;margin:0 0 22px;color:var(--ink-2)} .install li{margin:6px 0}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
-.chip{font:13px var(--mono);border:1px solid var(--line);background:var(--card);padding:5px 11px;border-radius:99px}
+.chip{font:14px var(--mono);color:var(--ink-2)}
 footer{padding:70px 0 50px;color:var(--ink-2);font-size:14.5px;text-align:center}
 footer .big2{font:600 28px var(--serif);color:var(--ink);margin-bottom:6px}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
@@ -113,11 +115,11 @@ footer .big2{font:600 28px var(--serif);color:var(--ink);margin-bottom:6px}
 <div class="wrap">
   <nav>
     <a class="brand" href="#"><img src="icon.svg" alt="">Relabel</a>
-    <div class="links"><a href="#how">How it works</a><a href="#private">Privacy</a><a href="#install">Install</a><a class="gh" href="https://github.com/jashjacob/relabel-macos">GitHub</a></div>
+    <div class="links"><a href="#how">How it works</a><a href="#private">Privacy</a><a href="#install">Install</a><a class="gh star" href="https://github.com/jashjacob/relabel-macos">★ Star <span id="starCount" hidden></span></a></div>
   </nav>
 
   <header class="hero">
-    <span class="eyebrow"><i></i>All 100% privately on your Mac</span>
+    <span class="eyebrow">All 100% privately on your Mac</span>
     <h1><span class="ugly">Screenshot 2026-11-19 at 4.12.08 PM.png</span>Name things after what they show.</h1>
     <p class="lead">Relabel lives in your menu bar and quietly renames new screenshots and PDFs as you take them. It reads each file and names it on your Mac with Apple's own on-device model.</p>
     <div class="cmd" id="cmd"><code id="cmdtext">curl -L https://github.com/jashjacob/relabel-macos/releases/latest/download/Relabel-arm64.zip -o /tmp/Relabel.zip &amp;&amp; mkdir -p ~/Applications &amp;&amp; ditto -x -k /tmp/Relabel.zip ~/Applications &amp;&amp; open ~/Applications/Relabel.app</code><button type="button" class="copy" id="copy">Copy</button></div>
@@ -193,7 +195,7 @@ grep -rE "URLSession|NWConnection|CFNetwork" Sources</code>
     <div class="install">
       <h2>Install in one line</h2>
       <p class="sub" style="margin-bottom:18px">Paste this into Terminal. It downloads Relabel, puts it in your Applications folder and opens it. Because it comes through Terminal, macOS does not show an unidentified developer warning.</p>
-      <div class="chips"><span class="chip">Apple silicon</span><span class="chip">macOS 27</span><span class="chip">Apple Intelligence on for best names</span></div>
+      <div class="chips"><span class="chip">Apple silicon · macOS 27 · Apple Intelligence on for best names</span></div>
       <code class="snip">curl -L https://github.com/jashjacob/relabel-macos/releases/latest/download/Relabel-arm64.zip -o /tmp/Relabel.zip &amp;&amp; \
 mkdir -p ~/Applications &amp;&amp; ditto -x -k /tmp/Relabel.zip ~/Applications &amp;&amp; \
 open ~/Applications/Relabel.app</code>
@@ -232,7 +234,7 @@ const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const rows = document.getElementById('rows'), scan = document.getElementById('scan');
 const els = FILES.map(f => {
   const r = document.createElement('div'); r.className = 'row';
-  r.innerHTML = `<div class="thumb">${T[f.t]}</div><div class="name"><span class="n"></span><small></small></div><span class="tag">renamed</span>`;
+  r.innerHTML = `<div class="thumb">${T[f.t]}</div><div class="name"><span class="n"></span><small></small></div><span class="tag">✓ renamed</span>`;
   rows.appendChild(r); return r;
 });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -266,6 +268,20 @@ document.getElementById('copy').onclick = async e => {
   try { await navigator.clipboard.writeText(t); b.textContent = 'Copied'; } catch { b.textContent = 'Select and copy'; }
   setTimeout(() => b.textContent = 'Copy', 1800);
 };
+/* github stars: one public request to GitHub's API, cached for an hour; the page works without it */
+(async () => {
+  const el = document.getElementById('starCount'), KEY = 'relabel-stars';
+  const show = n => { if (!n) return; el.textContent = n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n); el.hidden = false; };
+  try { const c = JSON.parse(localStorage.getItem(KEY) || 'null'); if (c && Date.now() - c.t < 36e5) { show(c.n); return; } } catch {}
+  try {
+    const r = await fetch('https://api.github.com/repos/jashjacob/relabel-macos', { headers: { Accept: 'application/vnd.github+json' } });
+    if (!r.ok) return;
+    const n = (await r.json()).stargazers_count;
+    if (typeof n !== 'number') return;
+    show(n);
+    try { localStorage.setItem(KEY, JSON.stringify({ t: Date.now(), n })); } catch {}
+  } catch {}
+})();
 /* lengths */
 const L = [
   ['Indore to Kochi flights', 'SkyLark flights Indore to Kochi from ₹8,240', 'SkyLark flights from Indore to Kochi with one stop from ₹8,240'],
