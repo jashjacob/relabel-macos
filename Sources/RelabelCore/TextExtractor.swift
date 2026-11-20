@@ -135,15 +135,13 @@ public enum TextExtractor {
         return CGImageDestinationFinalize(dest) ? url : nil
     }
 
-    /// Vision's boxes use a bottom-left origin, so the top of the image has the largest maxY.
+    /// Vision's boxes use a bottom-left origin. Text on the same row is joined into one line (see `OCRRows`).
     static func orderTopToBottom(_ observations: [VNRecognizedTextObservation]) -> [String] {
-        observations
-            .sorted { a, b in
-                if abs(a.boundingBox.maxY - b.boundingBox.maxY) > 0.01 { return a.boundingBox.maxY > b.boundingBox.maxY }
-                return a.boundingBox.minX < b.boundingBox.minX
-            }
-            .compactMap { $0.topCandidates(1).first?.string.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
+        OCRRows.lines(observations.compactMap { o in
+            guard let t = o.topCandidates(1).first?.string else { return nil }
+            let b = o.boundingBox
+            return TextBox(text: t, minX: b.minX, maxX: b.maxX, minY: b.minY, maxY: b.maxY)
+        })
     }
 
     static func topLabels(_ results: [VNClassificationObservation]) -> [String] {

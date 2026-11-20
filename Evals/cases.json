@@ -1,0 +1,21 @@
+{
+  "ui": ["select", "click", "button", "menu", "screen", "screenshot", "interface", "image", "deals", "untitled"],
+  "cases": [
+    {"match": "indigo-flights", "must": [["IndiGo"], ["ISK", "Nashik"], ["MAA", "Chennai"]]},
+    {"match": "flights-pune-mumbai", "must": [["Air Meridian", "flights"], ["PNQ", "Pune"], ["BOM", "Mumbai"]]},
+    {"match": "chat-dinner-plans", "must": [["Priya"], ["dinner"]]},
+    {"match": "xcode-build-error", "must": [["Xcode", "Build"], ["fetchUserName"]]},
+    {"match": "invoice-northwind", "must": [["Northwind"], ["invoice"], ["4471", "320"]]},
+    {"match": "terminal-keyerror", "must": [["KeyError"], ["amount", "import_orders"]]},
+    {"match": "email-roadmap-review", "must": [["roadmap"], ["Thursday", "Daniel"]]},
+    {"match": "settings-battery", "must": [["battery"]]},
+    {"match": "dashboard-weekly-users", "must": [["users", "overview", "analytics"], ["12,480", "weekly"]]},
+    {"match": "product-headphones", "must": [["Aurora"], ["headphones"], ["249"]]},
+    {"match": "recipe-tomato-pasta", "must": [["tomato"], ["pasta"]]},
+    {"match": "invoice-text.pdf", "must": [["ACME"], ["invoice"], ["INV-20481", "1,284.50"]]},
+    {"match": "Screenshot 2026-11-19 at 10.15.00", "must": [["budget"], ["2027"]]},
+    {"match": "2.02.59", "must": [["bidder", "qualification", "retrofit", "experience"]]},
+    {"match": "2.03.00", "must": [["item", "replacement", "missing", "CNC"]]},
+    {"match": "2.03.03", "must": [["breakdown", "maintenance", "service"]]}
+  ]
+}

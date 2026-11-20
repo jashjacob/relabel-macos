@@ -124,23 +124,33 @@ public enum NamingModel {
         let withImage = prefs.useImage && !forceTextOnly && supportsImages && ctx.image != nil
         guard withImage || ctx.text.count >= 3 || !ctx.labels.isEmpty else { return (basic, "No text found to name it from.") }
         var lastError: Error?
-        for attempt in 0..<2 {
+        var best: (title: String, category: String)?
+        var feedback: String?
+        for attempt in 0..<3 {
             do {
                 var c = ctx
                 if !withImage { c.image = nil }
-                let text = prompt(for: c, prefs: prefs, examples: examples, styleHint: styleHint)
+                var text = prompt(for: c, prefs: prefs, examples: examples, styleHint: styleHint)
+                if let feedback { text += "\n\n" + feedback }
                 let session = LanguageModelSession(instructions: rules)
                 let full: Prompt
                 if let img = c.image { full = Prompt { text; Attachment(img.image) } } else { full = Prompt { text } }
                 let response = try await session.respond(to: full, generating: GeneratedName.self,
                                                          options: GenerationOptions(sampling: .greedy))
-                let title = Sanitizer.restoreAcronyms(Sanitizer.sentenceCased(Sanitizer.cleanTitle(response.content.title)), source: ctx.text)
+                var title = Sanitizer.restoreAcronyms(Sanitizer.sentenceCased(Sanitizer.cleanTitle(response.content.title)), source: ctx.text)
+                title = Sanitizer.restoreProperNames(TitleCheck.stripped(title), source: ctx.text)
                 guard !title.isEmpty else { return (basic, "No better name found. Used basic naming.") }
-                return (NamingResult(title: title, category: response.content.category, source: .model), nil)
+                let problem = TitleCheck.problem(title, length: prefs.length, sourceText: ctx.text)
+                if best == nil || problem == nil { best = (title, response.content.category) }
+                guard let problem, attempt == 0 else { break }              // one corrective retry only
+                feedback = "Your previous title \"\(title)\" was rejected because \(problem). Write a better one from the same facts."
             } catch {
                 lastError = error
                 if attempt == 0 { try? await Task.sleep(for: .seconds(1.5)) }     // busy? give it a moment, then once more
             }
+        }
+        if let best {
+            return (NamingResult(title: TitleCheck.trimmed(best.title, length: prefs.length), category: best.category, source: .model), nil)
         }
         _ = lastError
         return (basic, "Apple Intelligence is busy, try again. Used basic naming this time.")
