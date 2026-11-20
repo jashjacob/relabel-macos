@@ -20,9 +20,10 @@ public enum ExtractionError: Error, LocalizedError, Sendable {
 
 /// Vision (OCR + image labels) and PDFKit text extraction. Everything runs on device.
 public enum TextExtractor {
-    public static let ocrTimeout: TimeInterval = 20
+    nonisolated(unsafe) public static var ocrTimeout: TimeInterval = 20
     /// The first accurate recognition on a Mac loads the text model, which can take about a minute once.
-    public static let firstRunTimeout: TimeInterval = 240
+    nonisolated(unsafe) public static var firstRunTimeout: TimeInterval = 240
+    public static let pdfPagesToRead = 3
     private static let warmFlag = WarmFlag()
     private static let gate = RecognitionGate()
 
@@ -32,29 +33,25 @@ public enum TextExtractor {
     /// Loads Vision's text model in the background so the first real file isn't slow. Safe to call repeatedly.
     public static func warmUp() async {
         guard !warmFlag.isWarm else { return }
-        let size = 200
-        let space = CGColorSpaceCreateDeviceGray()
-        guard let ctx = CGContext(data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: 0,
-                                  space: space, bitmapInfo: CGImageAlphaInfo.none.rawValue),
-              let img = ctx.makeImage() else { return }
         await gate.acquire()
         defer { Task { await gate.release() } }
         guard !warmFlag.isWarm else { return }
-        let ok = (try? await withTimeout(firstRunTimeout) {
-            let r = VNRecognizeTextRequest(); r.recognitionLevel = .accurate
-            try VNImageRequestHandler(cgImage: img, options: [:]).perform([r])
-            return true
-        }) ?? false
-        if ok { warmFlag.isWarm = true }
+        let size = 200
+        guard let ctx = CGContext(data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: 0,
+                                  space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue),
+              let img = ctx.makeImage(), let tmp = writeTempPNG(img) else { return }
+        defer { try? FileManager.default.removeItem(at: tmp) }
+        if (try? await OCRHelper.run(imageURL: tmp, fast: false, classify: false, timeout: firstRunTimeout)) != nil {
+            warmFlag.isWarm = true
+        }
     }
-    public static let pdfPagesToRead = 3
 
     // MARK: Screenshots
 
     public static func screenshotContext(url: URL, appName: String? = nil) async throws -> FileContext {
         guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
               let image = CGImageSourceCreateImageAtIndex(src, 0, nil) else { throw ExtractionError.notAnImage }
-        let (text, labels) = try await recognize(image, classify: true)
+        let (text, labels) = try await recognize(fileAt: url, classify: true)
         var ctx = FileContext(kind: .screenshot, originalName: url.lastPathComponent, text: text, labels: labels,
                               appName: appName, usedOCR: true, fileDate: creationDate(url))
         ctx.image = downscaled(src).map(ImageBox.init)
@@ -92,51 +89,50 @@ public enum TextExtractor {
 
     // MARK: Vision
 
-    /// OCR text ordered top to bottom, plus top image labels.
-    /// One recognition at a time (parallel ones make the system's text model crawl or fail), and if the accurate
-    /// model errors (it sometimes does under load: "E5RT ... Code 13") retry once, then use the fast level.
+    /// Recognizes an in-memory image (a rendered PDF page) by writing it to a temporary file first.
     static func recognize(_ image: CGImage, classify: Bool) async throws -> (String, [String]) {
+        guard let tmp = writeTempPNG(image) else { throw ExtractionError.recognitionFailed }
+        defer { try? FileManager.default.removeItem(at: tmp) }
+        return try await recognize(fileAt: tmp, classify: classify)
+    }
+
+    /// OCR text ordered top to bottom, plus top image labels.
+    ///
+    /// The work runs in a short-lived helper process (see `OCRHelper`). Apple's text recognition can wedge
+    /// inside Vision, and one stuck request blocks every later one in the same process. A helper that
+    /// doesn't answer in time is killed, so a hang costs one file a delay and nothing more.
+    /// One recognition at a time; if the accurate model errors, retry once, then use the fast level.
+    static func recognize(fileAt url: URL, classify: Bool) async throws -> (String, [String]) {
         await gate.acquire()
         defer { Task { await gate.release() } }
         let timeout = warmFlag.isWarm ? ocrTimeout : firstRunTimeout
 
-        func read(_ level: VNRequestTextRecognitionLevel) async throws -> String {
-            try await withTimeout(timeout) {
-                let req = VNRecognizeTextRequest()
-                req.recognitionLevel = level
-                req.usesLanguageCorrection = level == .accurate
-                try VNImageRequestHandler(cgImage: image, options: [:]).perform([req])
-                return orderTopToBottom(req.results ?? []).joined(separator: "\n")
-            }
-        }
-
-        let text: String
+        var out: OCRHelper.Output
         do {
-            text = try await read(.accurate)
+            out = try await OCRHelper.run(imageURL: url, fast: false, classify: classify, timeout: timeout)
         } catch ExtractionError.timedOut {
-            throw ExtractionError.timedOut
+            out = try await fastFallback(url, classify, timeout)             // accurate hung: skip it
         } catch {
             try? await Task.sleep(for: .seconds(0.7))
-            do { text = try await read(.accurate) }
-            catch ExtractionError.timedOut { throw ExtractionError.timedOut }
-            catch {
-                do { text = try await read(.fast) }
-                catch ExtractionError.timedOut { throw ExtractionError.timedOut }
-                catch { throw ExtractionError.recognitionFailed }
-            }
+            do { out = try await OCRHelper.run(imageURL: url, fast: false, classify: classify, timeout: timeout) }
+            catch ExtractionError.timedOut { out = try await fastFallback(url, classify, timeout) }
+            catch { out = try await fastFallback(url, classify, timeout) }
         }
         warmFlag.isWarm = true
+        return (out.text, out.labels)
+    }
 
-        // Labels are a nice-to-have: if classification fails, carry on without them.
-        var labels: [String] = []
-        if classify {
-            labels = (try? await withTimeout(timeout) {
-                let cls = VNClassifyImageRequest()
-                try VNImageRequestHandler(cgImage: image, options: [:]).perform([cls])
-                return topLabels(cls.results ?? [])
-            }) ?? []
-        }
-        return (text, labels)
+    private static func fastFallback(_ url: URL, _ classify: Bool, _ timeout: TimeInterval) async throws -> OCRHelper.Output {
+        do { return try await OCRHelper.run(imageURL: url, fast: true, classify: classify, timeout: timeout) }
+        catch ExtractionError.timedOut { throw ExtractionError.timedOut }
+        catch { throw ExtractionError.recognitionFailed }
+    }
+
+    static func writeTempPNG(_ image: CGImage) -> URL? {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("relabel-\(UUID().uuidString).png")
+        guard let dest = CGImageDestinationCreateWithURL(url as CFURL, "public.png" as CFString, 1, nil) else { return nil }
+        CGImageDestinationAddImage(dest, image, nil)
+        return CGImageDestinationFinalize(dest) ? url : nil
     }
 
     /// Vision's boxes use a bottom-left origin, so the top of the image has the largest maxY.

@@ -1,6 +1,8 @@
 import Foundation
 import RelabelCore
 
+OCRHelper.runIfRequested()   // OCR runs in a short-lived helper copy of this program
+
 // relabel spike <file> [--app <name>] [--prompt]
 // relabel watch <folder> [--kind screenshots|pdf] [--seconds N]
 // relabel tidy <folder> [--dry-run] [--length short|standard|detailed] [--date none|start|end] [--all]
