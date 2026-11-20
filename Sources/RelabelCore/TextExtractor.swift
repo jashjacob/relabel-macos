@@ -5,7 +5,7 @@ import ImageIO
 import AppKit
 
 public enum ExtractionError: Error, LocalizedError, Sendable {
-    case notAnImage, timedOut, unreadablePDF, lockedPDF
+    case notAnImage, timedOut, unreadablePDF, lockedPDF, recognitionFailed
 
     public var errorDescription: String? {
         switch self {
@@ -13,6 +13,7 @@ public enum ExtractionError: Error, LocalizedError, Sendable {
         case .timedOut: "Text recognition took too long"
         case .unreadablePDF: "Relabel can't read this PDF"
         case .lockedPDF: "This PDF is locked"
+        case .recognitionFailed: "Text recognition hit a problem. Try again in a moment."
         }
     }
 }
@@ -23,6 +24,7 @@ public enum TextExtractor {
     /// The first accurate recognition on a Mac loads the text model, which can take about a minute once.
     public static let firstRunTimeout: TimeInterval = 240
     private static let warmFlag = WarmFlag()
+    private static let gate = RecognitionGate()
 
     /// True once Vision's text model has loaded (the first run on a Mac can take about a minute).
     public static var isWarm: Bool { warmFlag.isWarm }
@@ -35,11 +37,15 @@ public enum TextExtractor {
         guard let ctx = CGContext(data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: 0,
                                   space: space, bitmapInfo: CGImageAlphaInfo.none.rawValue),
               let img = ctx.makeImage() else { return }
-        _ = try? await withTimeout(firstRunTimeout) {
+        await gate.acquire()
+        defer { Task { await gate.release() } }
+        guard !warmFlag.isWarm else { return }
+        let ok = (try? await withTimeout(firstRunTimeout) {
             let r = VNRecognizeTextRequest(); r.recognitionLevel = .accurate
             try VNImageRequestHandler(cgImage: img, options: [:]).perform([r])
-        }
-        warmFlag.isWarm = true
+            return true
+        }) ?? false
+        if ok { warmFlag.isWarm = true }
     }
     public static let pdfPagesToRead = 3
 
@@ -87,20 +93,50 @@ public enum TextExtractor {
     // MARK: Vision
 
     /// OCR text ordered top to bottom, plus top image labels.
+    /// One recognition at a time (parallel ones make the system's text model crawl or fail), and if the accurate
+    /// model errors (it sometimes does under load: "E5RT ... Code 13") retry once, then use the fast level.
     static func recognize(_ image: CGImage, classify: Bool) async throws -> (String, [String]) {
-        try await withTimeout(warmFlag.isWarm ? ocrTimeout : firstRunTimeout) {
-            let text = VNRecognizeTextRequest()
-            text.recognitionLevel = .accurate
-            text.usesLanguageCorrection = true
-            var requests: [VNRequest] = [text]
-            let cls = VNClassifyImageRequest()
-            if classify { requests.append(cls) }
-            try VNImageRequestHandler(cgImage: image, options: [:]).perform(requests)
-            let lines = orderTopToBottom(text.results ?? [])
-            let labels = classify ? topLabels(cls.results ?? []) : []
-            warmFlag.isWarm = true
-            return (lines.joined(separator: "\n"), labels)
+        await gate.acquire()
+        defer { Task { await gate.release() } }
+        let timeout = warmFlag.isWarm ? ocrTimeout : firstRunTimeout
+
+        func read(_ level: VNRequestTextRecognitionLevel) async throws -> String {
+            try await withTimeout(timeout) {
+                let req = VNRecognizeTextRequest()
+                req.recognitionLevel = level
+                req.usesLanguageCorrection = level == .accurate
+                try VNImageRequestHandler(cgImage: image, options: [:]).perform([req])
+                return orderTopToBottom(req.results ?? []).joined(separator: "\n")
+            }
         }
+
+        let text: String
+        do {
+            text = try await read(.accurate)
+        } catch ExtractionError.timedOut {
+            throw ExtractionError.timedOut
+        } catch {
+            try? await Task.sleep(for: .seconds(0.7))
+            do { text = try await read(.accurate) }
+            catch ExtractionError.timedOut { throw ExtractionError.timedOut }
+            catch {
+                do { text = try await read(.fast) }
+                catch ExtractionError.timedOut { throw ExtractionError.timedOut }
+                catch { throw ExtractionError.recognitionFailed }
+            }
+        }
+        warmFlag.isWarm = true
+
+        // Labels are a nice-to-have: if classification fails, carry on without them.
+        var labels: [String] = []
+        if classify {
+            labels = (try? await withTimeout(timeout) {
+                let cls = VNClassifyImageRequest()
+                try VNImageRequestHandler(cgImage: image, options: [:]).perform([cls])
+                return topLabels(cls.results ?? [])
+            }) ?? []
+        }
+        return (text, labels)
     }
 
     /// Vision's boxes use a bottom-left origin, so the top of the image has the largest maxY.
@@ -138,6 +174,19 @@ public enum TextExtractor {
 
     static func creationDate(_ url: URL) -> Date {
         (try? url.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? Date()
+    }
+}
+
+/// Lets one text recognition run at a time; the rest wait their turn.
+private actor RecognitionGate {
+    private var busy = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+    func acquire() async {
+        if !busy { busy = true; return }
+        await withCheckedContinuation { waiters.append($0) }
+    }
+    func release() {
+        if waiters.isEmpty { busy = false } else { waiters.removeFirst().resume() }
     }
 }
 
