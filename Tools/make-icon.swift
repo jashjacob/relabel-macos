@@ -1,24 +1,40 @@
 import AppKit
 // usage: swift make-icon.swift <out.iconset dir>
+// Dark tile, a cream page with a folded corner, and an orange scan line. Same artwork as docs/icon.svg.
 let out = CommandLine.arguments[1]
 try? FileManager.default.createDirectory(atPath: out, withIntermediateDirectories: true)
 func render(_ px: Int) -> Data {
     let s = CGFloat(px)
-    let img = NSImage(size: NSSize(width: s, height: s), flipped: false) { r in
-        let bg = NSBezierPath(roundedRect: r.insetBy(dx: s*0.06, dy: s*0.06), xRadius: s*0.22, yRadius: s*0.22)
-        NSGradient(colors: [NSColor(calibratedRed: 0.36, green: 0.55, blue: 1, alpha: 1),
-                            NSColor(calibratedRed: 0.42, green: 0.30, blue: 0.95, alpha: 1)])!.draw(in: bg, angle: -60)
-        NSColor.white.setFill(); NSColor.white.setStroke()
-        // Generic "document being scanned" glyph.
-        let page = NSBezierPath(roundedRect: NSRect(x: s*0.30, y: s*0.22, width: s*0.40, height: s*0.56), xRadius: s*0.04, yRadius: s*0.04)
-        page.fill()
-        NSColor(calibratedRed: 0.42, green: 0.30, blue: 0.95, alpha: 0.55).setFill()
-        for (i, w) in [0.26, 0.26, 0.16].enumerated() {
-            NSBezierPath(roundedRect: NSRect(x: s*0.36, y: s*(0.64 - 0.09*CGFloat(i)), width: s*w, height: s*0.03), xRadius: s*0.015, yRadius: s*0.015).fill()
+    let img = NSImage(size: NSSize(width: s, height: s), flipped: true) { r in
+        // Artwork is drawn on a 64 x 64 grid (y down) inside the standard icon margin.
+        let m = s * 0.06, k = (s - 2 * m) / 64
+        func X(_ v: CGFloat) -> CGFloat { m + v * k }
+        func Y(_ v: CGFloat) -> CGFloat { m + v * k }
+        func rect(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat, _ rad: CGFloat) -> NSBezierPath {
+            NSBezierPath(roundedRect: NSRect(x: X(x), y: Y(y), width: w * k, height: h * k), xRadius: rad * k, yRadius: rad * k)
         }
-        NSColor.white.setStroke()
-        let scan = NSBezierPath(); scan.move(to: NSPoint(x: s*0.22, y: s*0.40)); scan.line(to: NSPoint(x: s*0.78, y: s*0.40))
-        scan.lineWidth = s*0.035; scan.lineCapStyle = .round; scan.stroke()
+        NSColor(srgbRed: 0.09, green: 0.094, blue: 0.11, alpha: 1).setFill()
+        rect(0, 0, 64, 64, 15).fill()
+
+        let page = NSBezierPath()
+        page.move(to: NSPoint(x: X(19), y: Y(12))); page.line(to: NSPoint(x: X(39), y: Y(12)))
+        page.line(to: NSPoint(x: X(48), y: Y(21))); page.line(to: NSPoint(x: X(48), y: Y(52)))
+        page.appendArc(withCenter: NSPoint(x: X(46), y: Y(52)), radius: 2 * k, startAngle: 0, endAngle: 90)
+        page.line(to: NSPoint(x: X(19), y: Y(54)))
+        page.appendArc(withCenter: NSPoint(x: X(19), y: Y(52)), radius: 2 * k, startAngle: 90, endAngle: 180)
+        page.line(to: NSPoint(x: X(17), y: Y(14)))
+        page.appendArc(withCenter: NSPoint(x: X(19), y: Y(14)), radius: 2 * k, startAngle: 180, endAngle: 270)
+        page.close()
+        NSColor(srgbRed: 0.96, green: 0.945, blue: 0.91, alpha: 1).setFill(); page.fill()
+
+        let fold = NSBezierPath()
+        fold.move(to: NSPoint(x: X(39), y: Y(12))); fold.line(to: NSPoint(x: X(39), y: Y(21))); fold.line(to: NSPoint(x: X(48), y: Y(21))); fold.close()
+        NSColor(srgbRed: 0.85, green: 0.82, blue: 0.75, alpha: 1).setFill(); fold.fill()
+
+        NSColor(srgbRed: 0.604, green: 0.588, blue: 0.541, alpha: 1).setFill()
+        rect(23, 27, 20, 3, 1.5).fill(); rect(23, 41, 14, 3, 1.5).fill()
+        NSColor(srgbRed: 1, green: 0.353, blue: 0.212, alpha: 1).setFill()
+        rect(13, 33, 38, 3.5, 1.75).fill()
         return true
     }
     let rep = NSBitmapImageRep(data: img.tiffRepresentation!)!
