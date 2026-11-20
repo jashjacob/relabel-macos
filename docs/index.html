@@ -119,10 +119,10 @@ footer .big2{font:600 28px var(--serif);color:var(--ink);margin-bottom:6px}
     <h1><span class="ugly">Screenshot 2026-11-19 at 2.03.04 PM.png</span>Name things after what they show.</h1>
     <p class="lead">Relabel lives in your menu bar and quietly renames new screenshots and PDFs as you take them. It reads each file and names it on your Mac with Apple's own on-device model.</p>
     <div class="cta">
-      <a class="btn primary" href="#install">Get Relabel</a>
-      <a class="btn ghost" href="https://github.com/jashjacob/relabel-macos">See the code</a>
+      <a class="btn primary" href="https://github.com/jashjacob/relabel-macos/releases/latest/download/Relabel-arm64.zip">Download for Mac</a>
+      <a class="btn ghost" href="#install">How to open it</a>
     </div>
-    <p class="fine">Free and open source. For Apple silicon Macs on macOS 27.</p>
+    <p class="fine">Free and open source. Version 0.1.0 for Apple silicon Macs on macOS 27. <a href="#install">Not notarized yet, so see how to open it</a>.</p>
 
     <div class="stage" aria-label="Animated example of files being renamed">
       <div class="bar"><b></b><b></b><b></b><span>Desktop</span><button class="replay" id="replay" type="button">Replay</button></div>
@@ -193,13 +193,22 @@ grep -rE "URLSession|NWConnection|CFNetwork" Sources</code>
   <section id="install">
     <div class="install">
       <h2>Get it running</h2>
-      <p class="sub" style="margin-bottom:18px">Relabel is built from source. It needs only Apple's Command Line Tools, no Xcode.</p>
+      <p class="sub" style="margin-bottom:18px">Relabel is not notarized yet: that needs a paid Apple Developer account. So macOS warns about downloaded copies. Pick whichever way you like.</p>
       <div class="chips"><span class="chip">Apple silicon</span><span class="chip">macOS 27</span><span class="chip">Apple Intelligence on for best names</span></div>
-      <code class="snip">git clone https://github.com/jashjacob/relabel-macos.git
-cd relabel-macos
-./build.sh
+      <h3 style="margin:6px 0 8px">1 · Terminal, no warning</h3>
+      <p style="color:var(--ink-2);font-size:15px;margin:0 0 10px">Downloads made by <code>curl</code> are not flagged by macOS, so it just opens.</p>
+      <code class="snip">curl -L https://github.com/jashjacob/relabel-macos/releases/latest/download/Relabel-arm64.zip -o /tmp/Relabel.zip &amp;&amp; \
+mkdir -p ~/Applications &amp;&amp; ditto -x -k /tmp/Relabel.zip ~/Applications &amp;&amp; \
 open ~/Applications/Relabel.app</code>
-      <p style="color:var(--ink-2);font-size:15px;margin:18px 0 0">Without Apple Intelligence it still works, using basic naming from the text on the file, and it tells you when it does.</p>
+      <h3 style="margin:26px 0 8px">2 · Download button</h3>
+      <ol><li>Click <a href="https://github.com/jashjacob/relabel-macos/releases/latest/download/Relabel-arm64.zip">Download for Mac</a>, unzip, drag Relabel to Applications.</li>
+      <li>Open it. macOS says it can't check it for malware. Click Done.</li>
+      <li>Open System Settings, Privacy &amp; Security, scroll down and click <b>Open Anyway</b> next to Relabel.</li></ol>
+      <h3 style="margin:26px 0 8px">3 · Build it yourself</h3>
+      <code class="snip">git clone https://github.com/jashjacob/relabel-macos.git
+cd relabel-macos &amp;&amp; ./build.sh
+open ~/Applications/Relabel.app</code>
+      <p style="color:var(--ink-2);font-size:15px;margin:18px 0 0">Needs only Apple's Command Line Tools. Without Apple Intelligence Relabel still works, using basic naming from the text on the file, and it tells you when it does. The download's SHA-256 is on the <a href="https://github.com/jashjacob/relabel-macos/releases/latest">release page</a>.</p>
     </div>
   </section>
 
