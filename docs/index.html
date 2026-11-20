@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Relabel: your screenshots, finally named</title>
+<meta name="description" content="Relabel is a Mac menu bar app that renames screenshots and PDFs after what is in them, using Apple's on-device model. All 100% privately on your Mac.">
+<meta name="theme-color" content="#f5f1e8">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+:root{
+  --paper:#f5f1e8; --paper-2:#ece6d8; --card:#fffdf8; --ink:#17181c; --ink-2:#55575f; --line:#ddd5c3;
+  --scan:#ff5a36; --scan-soft:#ffe3da; --ok:#1f8f5f; --mono:ui-monospace,"SF Mono",Menlo,monospace;
+  --serif:ui-serif,"New York",Georgia,serif; --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){--paper:#141310; --paper-2:#1c1a16; --card:#201e19; --ink:#f3eee2; --ink-2:#a9a595; --line:#34312a; --scan-soft:#3a2119;}
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+nav{display:flex;align-items:center;justify-content:space-between;padding:20px 0}
+.brand{display:flex;align-items:center;gap:10px;font-weight:650;text-decoration:none;font-size:18px}
+.brand img{width:30px;height:30px}
+nav .links{display:flex;gap:22px;font-size:15px}
+nav .links a{text-decoration:none;color:var(--ink-2)} nav .links a:hover{color:var(--ink)}
+@media(max-width:560px){nav .links a:not(.gh){display:none}}
+
+.hero{padding:44px 0 28px;text-align:center}
+.eyebrow{display:inline-flex;gap:8px;align-items:center;font:13px var(--mono);color:var(--ink-2);background:var(--paper-2);border:1px solid var(--line);padding:6px 12px;border-radius:99px}
+.eyebrow i{width:8px;height:8px;border-radius:50%;background:var(--ok);display:block}
+h1{font:600 clamp(36px,6.4vw,68px)/1.05 var(--serif);letter-spacing:-.02em;margin:22px auto 0;max-width:15em}
+h1 .ugly{font:500 .52em/1.2 var(--mono);display:block;color:var(--ink-2);text-decoration:line-through;text-decoration-color:var(--scan);text-decoration-thickness:2px;margin-bottom:.5em;letter-spacing:0;overflow-wrap:anywhere}
+.lead{max-width:36em;margin:22px auto 0;color:var(--ink-2);font-size:19px}
+.cta{display:flex;gap:12px;justify-content:center;margin-top:30px;flex-wrap:wrap}
+.btn{display:inline-block;padding:13px 22px;border-radius:12px;font-weight:600;text-decoration:none;border:1px solid var(--ink);font-size:16px}
+.btn.primary{background:var(--ink);color:var(--paper)} .btn.primary:hover{transform:translateY(-1px)}
+.btn.ghost:hover{background:var(--paper-2)}
+.fine{margin-top:14px;font-size:14px;color:var(--ink-2)}
+
+/* Stage */
+.stage{margin:46px auto 0;max-width:820px;background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:0 30px 60px -30px rgba(40,30,10,.35);overflow:hidden;text-align:left}
+.bar{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--paper-2)}
+.bar b{width:11px;height:11px;border-radius:50%;background:#d9b9a8;display:block}.bar b:nth-child(2){background:#e5d29a}.bar b:nth-child(3){background:#aecb9c}
+.bar span{margin-left:10px;font:13px var(--mono);color:var(--ink-2)}
+.bar button{margin-left:auto}
+.rows{position:relative}
+.row{display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid var(--line);position:relative}
+.row:last-child{border-bottom:0}
+.thumb{flex:none;width:76px;height:54px;border-radius:8px;background:var(--paper-2);border:1px solid var(--line);overflow:hidden}
+.thumb svg{display:block;width:100%;height:100%}
+.name{font:15px/1.35 var(--mono);min-width:0;overflow-wrap:anywhere}
+.name small{display:block;font:12px var(--sans);color:var(--ink-2);margin-top:3px}
+.row.done .name{color:var(--ink)}
+.row .tag{margin-left:auto;flex:none;font:12px var(--mono);padding:3px 9px;border-radius:99px;background:var(--paper-2);color:var(--ink-2);opacity:0;transition:opacity .3s}
+.row.done .tag{opacity:1;background:#dff3e8;color:#14623f}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .row.done .tag{background:#173a2a;color:#8be0b6}}
+.scan{position:absolute;left:0;right:0;height:3px;background:var(--scan);box-shadow:0 0 22px 6px var(--scan-soft),0 0 2px var(--scan);top:0;opacity:0;pointer-events:none;border-radius:2px}
+.replay{font:13px var(--sans);background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:5px 11px;cursor:pointer}
+.replay:hover{background:var(--paper)}
+.caret::after{content:"";display:inline-block;width:2px;height:1em;background:var(--scan);vertical-align:-2px;margin-left:2px;animation:blink .7s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+
+section{padding:76px 0 0}
+h2{font:600 clamp(28px,4.4vw,44px)/1.1 var(--serif);letter-spacing:-.015em;margin:0 0 14px}
+.sub{color:var(--ink-2);max-width:38em;margin:0 0 34px;font-size:18px}
+.grid{display:grid;gap:16px}
+.g3{grid-template-columns:repeat(3,1fr)} .g2{grid-template-columns:repeat(2,1fr)}
+@media(max-width:820px){.g3,.g2{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px}
+.card h3{margin:0 0 6px;font-size:18px}
+.card p{margin:0;color:var(--ink-2);font-size:15.5px}
+.num{font:600 13px var(--mono);color:var(--scan);display:block;margin-bottom:10px}
+
+/* offline */
+.offline{display:grid;grid-template-columns:1.1fr 1fr;gap:28px;align-items:center;background:var(--ink);color:var(--paper);border-radius:24px;padding:38px}
+@media(max-width:820px){.offline{grid-template-columns:1fr;padding:26px}}
+.offline h2{color:var(--paper)} .offline p{color:#c9c5b8;font-size:18px;margin:0 0 14px}
+.offline code,.install code,.snip{font:14px var(--mono)}
+.snip{display:block;background:#0c0c0a;color:#e8e2d2;border-radius:12px;padding:14px 16px;overflow-x:auto;white-space:pre;margin:0}
+.snip .c{color:#8b867a}
+.toggle{display:flex;align-items:center;gap:14px;background:#26241f;border:1px solid #3c3930;padding:16px 18px;border-radius:16px;margin-bottom:14px;cursor:pointer;user-select:none;width:100%;color:#f3eee2;font:inherit;text-align:left}
+.sw{width:50px;height:30px;border-radius:99px;background:#4a463b;position:relative;transition:background .25s;flex:none}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .25s}
+.toggle[aria-pressed="true"] .sw{background:var(--ok)} .toggle[aria-pressed="true"] .sw::after{transform:translateX(20px)}
+.toggle strong{display:block;font-size:16px} .toggle span.s{font-size:14px;color:#b8b3a3}
+.live{background:#26241f;border:1px solid #3c3930;border-radius:16px;padding:16px 18px;font:14px var(--mono);color:#e8e2d2}
+.live .ln{display:flex;justify-content:space-between;gap:12px;padding:3px 0}
+.live .ok{color:#7be0ad}
+
+/* length */
+.seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:18px}
+.seg button{border:0;background:none;font:600 15px var(--sans);padding:8px 18px;border-radius:9px;cursor:pointer;color:var(--ink-2)}
+.seg button[aria-pressed="true"]{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.lengthbox{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.lengthbox .thumb{width:130px;height:92px}
+.big{font:500 clamp(18px,2.6vw,24px)/1.3 var(--mono);min-height:2.7em;flex:1;min-width:230px}
+
+.install{background:var(--paper-2);border:1px solid var(--line);border-radius:24px;padding:34px}
+.install ol{padding-left:20px;margin:0 0 22px;color:var(--ink-2)} .install li{margin:6px 0}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.chip{font:13px var(--mono);border:1px solid var(--line);background:var(--card);padding:5px 11px;border-radius:99px}
+footer{padding:70px 0 50px;color:var(--ink-2);font-size:14.5px;text-align:center}
+footer .big2{font:600 28px var(--serif);color:var(--ink);margin-bottom:6px}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <a class="brand" href="#"><img src="icon.svg" alt="">Relabel</a>
+    <div class="links"><a href="#how">How it works</a><a href="#private">Privacy</a><a href="#install">Install</a><a class="gh" href="https://github.com/jashjacob/relabel-macos">GitHub</a></div>
+  </nav>
+
+  <header class="hero">
+    <span class="eyebrow"><i></i>All 100% privately on your Mac</span>
+    <h1><span class="ugly">Screenshot 2026-11-19 at 4.12.08 PM.png</span>Name things after what they show.</h1>
+    <p class="lead">Relabel lives in your menu bar and quietly renames new screenshots and PDFs as you take them. It reads each file and names it on your Mac with Apple's own on-device model.</p>
+    <div class="cta">
+      <a class="btn primary" href="#install">Get Relabel</a>
+      <a class="btn ghost" href="https://github.com/jashjacob/relabel-macos">See the code</a>
+    </div>
+    <p class="fine">Free and open source. For Apple silicon Macs on macOS 27.</p>
+
+    <div class="stage" aria-label="Animated example of files being renamed">
+      <div class="bar"><b></b><b></b><b></b><span>Desktop</span><button class="replay" id="replay" type="button">Replay</button></div>
+      <div class="rows" id="rows"><div class="scan" id="scan"></div></div>
+    </div>
+  </header>
+
+  <section id="how">
+    <h2>Three quiet steps</h2>
+    <p class="sub">You take the screenshot like always. By the time you look for it again, it has a name you can search for.</p>
+    <div class="grid g3">
+      <div class="card"><span class="num">01 · WATCH</span><h3>Keeps an eye on your folders</h3><p>Pick where screenshots land and which folders hold PDFs. Relabel only touches those, and only files that are new.</p></div>
+      <div class="card"><span class="num">02 · READ</span><h3>Looks at the file, not just the name</h3><p>It reads the text with Apple's Vision and shows the picture to the on-device model, so a flight list is a flight list.</p></div>
+      <div class="card"><span class="num">03 · NAME</span><h3>Renames it, and keeps the date</h3><p>Only the file name changes. Created and modified dates stay put, and every rename can be undone in one click.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Short, standard or detailed</h2>
+    <p class="sub">Pick how much a name should say. The same screenshot, three ways (examples):</p>
+    <div class="seg" role="group" aria-label="Name length">
+      <button type="button" data-l="0" aria-pressed="false">Short</button>
+      <button type="button" data-l="1" aria-pressed="true">Standard</button>
+      <button type="button" data-l="2" aria-pressed="false">Detailed</button>
+    </div>
+    <div class="lengthbox">
+      <div class="thumb" id="lthumb"></div>
+      <div class="big" id="lname"></div>
+    </div>
+  </section>
+
+  <section id="private">
+    <div class="offline">
+      <div>
+        <h2>Turn Wi-Fi off. Nothing changes.</h2>
+        <p>Relabel has no accounts, no analytics, no API keys and no third-party code. It only uses frameworks that ship with macOS, and the model runs on your Mac.</p>
+        <p>Do not take our word for it. Search the source for any networking API:</p>
+        <code class="snip"><span class="c"># no output means no networking code</span>
+grep -rE "URLSession|NWConnection|CFNetwork" Sources</code>
+      </div>
+      <div>
+        <button class="toggle" id="wifi" type="button" aria-pressed="true">
+          <span class="sw"></span><span><strong id="wifiTitle">Wi-Fi is on</strong><span class="s" id="wifiSub">Tap to switch it off</span></span>
+        </button>
+        <div class="live" aria-live="polite">
+          <div class="ln"><span>reading text on screen</span><span class="ok">on device</span></div>
+          <div class="ln"><span>naming with Apple's model</span><span class="ok">on device</span></div>
+          <div class="ln"><span>bytes sent anywhere</span><span class="ok">0</span></div>
+          <div class="ln"><span>needs internet</span><span class="ok" id="needs">no</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Small things that matter</h2>
+    <p class="sub">The boring parts are done carefully, because it is renaming your files.</p>
+    <div class="grid g3">
+      <div class="card"><h3>Undo and redo, always</h3><p>Every rename is in a recent list. Undo it, redo it, or fix the name right there.</p></div>
+      <div class="card"><h3>Tidy Up a whole folder</h3><p>Preview new names for a messy Downloads folder first. Nothing changes until you say so.</p></div>
+      <div class="card"><h3>Learns your style</h3><p>Rename a few files your way and it starts to follow. That lives on your Mac, and Forget Everything wipes it.</p></div>
+      <div class="card"><h3>Drop files on it</h3><p>Drag a file onto the menu bar icon, the panel or the app icon. Or use Open With.</p></div>
+      <div class="card"><h3>Gets out of the way</h3><p>Pauses in Low Power Mode, backs off when your Mac runs hot, and says so plainly when it can't name something.</p></div>
+      <div class="card"><h3>Has a command line</h3><p><code style="font:14px var(--mono)">relabel tidy ~/Downloads --dry-run</code> for people who live in the terminal.</p></div>
+    </div>
+  </section>
+
+  <section id="install">
+    <div class="install">
+      <h2>Get it running</h2>
+      <p class="sub" style="margin-bottom:18px">Relabel is built from source. It needs only Apple's Command Line Tools, no Xcode.</p>
+      <div class="chips"><span class="chip">Apple silicon</span><span class="chip">macOS 27</span><span class="chip">Apple Intelligence on for best names</span></div>
+      <code class="snip">git clone https://github.com/jashjacob/relabel-macos.git
+cd relabel-macos
+./build.sh
+open ~/Applications/Relabel.app</code>
+      <p style="color:var(--ink-2);font-size:15px;margin:18px 0 0">Without Apple Intelligence it still works, using basic naming from the text on the file, and it tells you when it does.</p>
+    </div>
+  </section>
+
+  <footer>
+    <div class="big2">Your files, named once, properly.</div>
+    <div>Relabel is open source. <a href="https://github.com/jashjacob/relabel-macos">github.com/jashjacob/relabel-macos</a></div>
+    <div style="margin-top:6px">Not affiliated with Apple. Examples on this page are illustrations.</div>
+  </footer>
+</div>
+
+<script>
+const T = {
+  flights: `<svg viewBox="0 0 76 54"><rect x="6" y="6" width="64" height="12" rx="3" fill="#c9d3e6"/><rect x="6" y="22" width="64" height="12" rx="3" fill="#c9d3e6"/><rect x="6" y="38" width="64" height="12" rx="3" fill="#c9d3e6"/><rect x="50" y="9" width="16" height="6" rx="2" fill="#17223f"/><rect x="50" y="25" width="16" height="6" rx="2" fill="#17223f"/><rect x="50" y="41" width="16" height="6" rx="2" fill="#17223f"/></svg>`,
+  invoice: `<svg viewBox="0 0 76 54"><rect x="18" y="4" width="40" height="46" rx="3" fill="#fff" stroke="#d8d2c2"/><rect x="23" y="10" width="20" height="4" fill="#17181c"/><rect x="23" y="20" width="30" height="2.5" fill="#bbb"/><rect x="23" y="26" width="30" height="2.5" fill="#bbb"/><rect x="23" y="32" width="22" height="2.5" fill="#bbb"/><rect x="36" y="41" width="17" height="4" fill="#ff5a36"/></svg>`,
+  chat: `<svg viewBox="0 0 76 54"><rect x="6" y="6" width="38" height="11" rx="5" fill="#e4e0d4"/><rect x="30" y="21" width="40" height="11" rx="5" fill="#cfeec9"/><rect x="6" y="36" width="44" height="11" rx="5" fill="#e4e0d4"/></svg>`,
+  error: `<svg viewBox="0 0 76 54"><rect width="76" height="54" fill="#faf6ee"/><rect y="20" width="76" height="12" fill="#ffd9d4"/><rect x="6" y="23" width="44" height="5" rx="2" fill="#d5392a"/><rect x="6" y="8" width="30" height="3" fill="#bbb"/><rect x="6" y="40" width="26" height="3" fill="#bbb"/></svg>`
+};
+const FILES = [
+  {t:'flights', from:'Screenshot 2026-11-19 at 4.12.08 PM.png', to:'SkyLark flights Indore to Kochi from ₹8,240.png', note:'Flight search results'},
+  {t:'invoice', from:'Scan_20261014_0031.pdf', to:'Northwind Cleaning invoice 4471 for $320.pdf', note:'Invoice'},
+  {t:'chat', from:'Screenshot 2026-11-20 at 9.12.41 AM.png', to:'Chat with Priya about Friday dinner.png', note:'Chat'},
+  {t:'error', from:'Screenshot 2026-11-20 at 4.40.07 PM.png', to:'Xcode error cannot find fetchUserName in scope.png', note:'Error message'}
+];
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const rows = document.getElementById('rows'), scan = document.getElementById('scan');
+const els = FILES.map(f => {
+  const r = document.createElement('div'); r.className = 'row';
+  r.innerHTML = `<div class="thumb">${T[f.t]}</div><div class="name"><span class="n"></span><small></small></div><span class="tag">renamed</span>`;
+  rows.appendChild(r); return r;
+});
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+let token = 0;
+function reset(){ els.forEach((r,i)=>{ r.classList.remove('done'); r.querySelector('.n').textContent = FILES[i].from; r.querySelector('.n').classList.remove('caret'); r.querySelector('small').textContent=''; }); scan.style.opacity = 0; }
+function finish(){ els.forEach((r,i)=>{ r.classList.add('done'); r.querySelector('.n').textContent = FILES[i].to; r.querySelector('small').textContent = FILES[i].note; }); scan.style.opacity = 0; }
+async function play(){
+  const my = ++token; reset();
+  if (reduce) { finish(); return; }
+  await sleep(900);
+  for (let i = 0; i < els.length; i++) {
+    if (my !== token) return;
+    const r = els[i], n = r.querySelector('.n'), top = r.offsetTop;
+    scan.style.opacity = 1; scan.style.transition = 'none'; scan.style.top = top + 'px';
+    await sleep(30);
+    scan.style.transition = 'top .7s ease-in-out'; scan.style.top = (top + r.offsetHeight - 3) + 'px';
+    await sleep(720);
+    n.classList.add('caret');
+    const to = FILES[i].to;
+    for (let k = 1; k <= to.length; k++) { if (my !== token) return; n.textContent = to.slice(0, k); await sleep(16); }
+    n.classList.remove('caret'); r.classList.add('done'); r.querySelector('small').textContent = FILES[i].note;
+    await sleep(250);
+  }
+  scan.style.opacity = 0;
+}
+document.getElementById('replay').onclick = play;
+play();
+
+/* lengths */
+const L = [
+  ['Indore to Kochi flights', 'SkyLark flights Indore to Kochi from ₹8,240', 'SkyLark flights from Indore to Kochi with one stop from ₹8,240'],
+];
+document.getElementById('lthumb').innerHTML = T.flights;
+const lname = document.getElementById('lname'), segs = [...document.querySelectorAll('.seg button')];
+function setLen(i){ segs.forEach((b,k)=>b.setAttribute('aria-pressed', k===i)); lname.textContent = L[0][i]; }
+segs.forEach((b,i)=>b.onclick=()=>setLen(i)); setLen(1);
+
+/* wifi */
+const wifi = document.getElementById('wifi');
+wifi.onclick = () => {
+  const on = wifi.getAttribute('aria-pressed') !== 'true';
+  wifi.setAttribute('aria-pressed', on);
+  document.getElementById('wifiTitle').textContent = on ? 'Wi-Fi is on' : 'Wi-Fi is off';
+  document.getElementById('wifiSub').textContent = on ? 'Tap to switch it off' : 'Relabel keeps naming, exactly the same';
+};
+</script>
+</body>
+</html>
