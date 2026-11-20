@@ -6,15 +6,14 @@
 <title>Relabel: your screenshots, finally named</title>
 <meta name="description" content="Relabel is a Mac menu bar app that renames screenshots and PDFs after what is in them, using Apple's on-device model. All 100% privately on your Mac.">
 <meta name="theme-color" content="#f5f1e8">
+<meta name="color-scheme" content="light">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <style>
 :root{
+  color-scheme:light;
   --paper:#f5f1e8; --paper-2:#ece6d8; --card:#fffdf8; --ink:#17181c; --ink-2:#55575f; --line:#ddd5c3;
   --scan:#ff5a36; --scan-soft:#ffe3da; --ok:#1f8f5f; --mono:ui-monospace,"SF Mono",Menlo,monospace;
   --serif:ui-serif,"New York",Georgia,serif; --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;
-}
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){--paper:#141310; --paper-2:#1c1a16; --card:#201e19; --ink:#f3eee2; --ink-2:#a9a595; --line:#34312a; --scan-soft:#3a2119;}
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
@@ -60,7 +59,6 @@ h1 .ugly{font:500 .52em/1.2 var(--mono);display:block;color:var(--ink-2);text-de
 .row.done .name{color:var(--ink)}
 .row .tag{margin-left:auto;flex:none;font:12px var(--mono);padding:3px 9px;border-radius:99px;background:var(--paper-2);color:var(--ink-2);opacity:0;transition:opacity .3s}
 .row.done .tag{opacity:1;background:#dff3e8;color:#14623f}
-@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .row.done .tag{background:#173a2a;color:#8be0b6}}
 .scan{position:absolute;left:0;right:0;height:3px;background:var(--scan);box-shadow:0 0 22px 6px var(--scan-soft),0 0 2px var(--scan);top:0;opacity:0;pointer-events:none;border-radius:2px}
 .replay{font:13px var(--sans);background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:5px 11px;cursor:pointer}
 .replay:hover{background:var(--paper)}
