@@ -1,4 +1,7 @@
 import Foundation
+import RelabelCore
+
+OCRHelper.runIfRequested()   // OCR runs in a short-lived helper copy of this program
 
 nonisolated(unsafe) var failures = 0
 func check(_ ok: Bool, _ msg: String = "check failed", line: Int = #line) {
@@ -31,6 +34,7 @@ run("detect renames in Finder") { try LearningChecks.detection() }
 run("prompt includes learning") { LearningChecks.promptHelp() }
 run("processed markers") { try RenameChecks.markers() }
 do { try await RenameChecks.hold(); do { try await ExtractionChecks.extraction(); print(failures == 0 ? "ok   text extraction on fixtures" : "see failures above") } catch { failures += 1; print("ERROR extraction \(error)") }
+do { try await ExtractionChecks.hangProtection(); print(failures == 0 ? "ok   hung OCR is killed, next file works" : "see failures above") } catch { failures += 1; print("ERROR hang \(error)") }
 await ExtractionChecks.basicNaming(); print(failures == 0 ? "ok   basic naming" : "see failures above")
 do { try await ExtractionChecks.fallbackNoteRecorded(); print(failures == 0 ? "ok   fallback note + no better name" : "see failures above") } catch { failures += 1; print("ERROR fallback \(error)") }
 print(failures == 0 ? "ok   hold / release" : "see failures above") } catch { failures += 1; print("ERROR hold \(error)") }

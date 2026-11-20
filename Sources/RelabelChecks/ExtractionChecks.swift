@@ -25,6 +25,27 @@ enum ExtractionChecks {
         catch { check(error is ExtractionError, "unreadable PDF") }
     }
 
+    /// A recognition that never answers must be killed and reported, and the next file must still work.
+    static func hangProtection() async throws {
+        let url = URL(fileURLWithPath: "Fixtures/Screenshot 2026-11-19 at 10.15.00.png")
+        let saved = TextExtractor.ocrTimeout
+        TextExtractor.ocrTimeout = 2
+        setenv("RELABEL_OCR_TEST_HANG", "1", 1)
+        let t0 = Date()
+        do { _ = try await TextExtractor.screenshotContext(url: url); check(false, "a hung helper should time out") }
+        catch { check(error.localizedDescription == "Text recognition took too long", "hang reported as timeout: \(error.localizedDescription)") }
+        check(Date().timeIntervalSince(t0) < 12, "gave up promptly (took \(Date().timeIntervalSince(t0))s)")
+        try await Task.sleep(for: .seconds(2))
+        let p = Process(); p.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep"); p.arguments = ["-f", OCRHelper.flag]
+        let pipe = Pipe(); p.standardOutput = pipe; try p.run(); p.waitUntilExit()
+        let left = String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self).split(separator: "\n").count
+        check(left == 0, "hung helper processes were killed (\(left) left)")
+        unsetenv("RELABEL_OCR_TEST_HANG")
+        TextExtractor.ocrTimeout = saved
+        let ok = try await TextExtractor.screenshotContext(url: url)
+        check(ok.text.contains("Quarterly"), "next file works after a hang")
+    }
+
     static func basicNaming() async {
         let ctx = FileContext(kind: .pdf, originalName: "x.pdf", text: "ACME Plumbing Ltd\nINVOICE\nInvoice number INV-20481\nAmount due 1,284.50")
         let r = await NamingModel.name(for: ctx, prefs: NamingPreferences(), useModel: false)
