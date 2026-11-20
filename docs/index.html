@@ -38,6 +38,10 @@ h1 .ugly{font:500 .52em/1.2 var(--mono);display:block;color:var(--ink-2);text-de
 .btn{display:inline-block;padding:13px 22px;border-radius:12px;font-weight:600;text-decoration:none;border:1px solid var(--ink);font-size:16px}
 .btn.primary{background:var(--ink);color:var(--paper)} .btn.primary:hover{transform:translateY(-1px)}
 .btn.ghost:hover{background:var(--paper-2)}
+.cmd{display:flex;align-items:center;gap:12px;max-width:760px;margin:30px auto 0;background:var(--ink);color:var(--paper);border-radius:14px;padding:10px 10px 10px 18px;text-align:left}
+.cmd code{font:13.5px/1.5 var(--mono);overflow-x:auto;white-space:nowrap;flex:1;scrollbar-width:none;padding:6px 0}
+.cmd code::-webkit-scrollbar{display:none}
+.copy{flex:none;border:0;border-radius:9px;background:var(--scan);color:#fff;font:600 14px var(--sans);padding:10px 16px;cursor:pointer}
 .fine{margin-top:14px;font-size:14px;color:var(--ink-2)}
 
 /* Stage */
@@ -118,11 +122,8 @@ footer .big2{font:600 28px var(--serif);color:var(--ink);margin-bottom:6px}
     <span class="eyebrow"><i></i>All 100% privately on your Mac</span>
     <h1><span class="ugly">Screenshot 2026-11-19 at 2.03.04 PM.png</span>Name things after what they show.</h1>
     <p class="lead">Relabel lives in your menu bar and quietly renames new screenshots and PDFs as you take them. It reads each file and names it on your Mac with Apple's own on-device model.</p>
-    <div class="cta">
-      <a class="btn primary" href="https://github.com/jashjacob/relabel-macos/releases/latest/download/Relabel-arm64.zip">Download for Mac</a>
-      <a class="btn ghost" href="#install">How to open it</a>
-    </div>
-    <p class="fine">Free and open source. Version 0.1.0 for Apple silicon Macs on macOS 27. <a href="#install">Not notarized yet, so see how to open it</a>.</p>
+    <div class="cmd" id="cmd"><code id="cmdtext">curl -L https://github.com/jashjacob/relabel-macos/releases/latest/download/Relabel-arm64.zip -o /tmp/Relabel.zip &amp;&amp; mkdir -p ~/Applications &amp;&amp; ditto -x -k /tmp/Relabel.zip ~/Applications &amp;&amp; open ~/Applications/Relabel.app</code><button type="button" class="copy" id="copy">Copy</button></div>
+    <p class="fine">Paste it into Terminal. Free and open source. Version 0.1.0 for Apple silicon Macs on macOS 27. <a href="#install">More ways to install</a></p>
 
     <div class="stage" aria-label="Animated example of files being renamed">
       <div class="bar"><b></b><b></b><b></b><span>Desktop</span><button class="replay" id="replay" type="button">Replay</button></div>
@@ -192,23 +193,19 @@ grep -rE "URLSession|NWConnection|CFNetwork" Sources</code>
 
   <section id="install">
     <div class="install">
-      <h2>Get it running</h2>
-      <p class="sub" style="margin-bottom:18px">Relabel is not notarized yet: that needs a paid Apple Developer account. So macOS warns about downloaded copies. Pick whichever way you like.</p>
+      <h2>Install in one line</h2>
+      <p class="sub" style="margin-bottom:18px">Paste this into Terminal. It downloads Relabel, puts it in your Applications folder and opens it. Because it comes through Terminal, macOS does not show an unidentified developer warning.</p>
       <div class="chips"><span class="chip">Apple silicon</span><span class="chip">macOS 27</span><span class="chip">Apple Intelligence on for best names</span></div>
-      <h3 style="margin:6px 0 8px">1 · Terminal, no warning</h3>
-      <p style="color:var(--ink-2);font-size:15px;margin:0 0 10px">Downloads made by <code>curl</code> are not flagged by macOS, so it just opens.</p>
       <code class="snip">curl -L https://github.com/jashjacob/relabel-macos/releases/latest/download/Relabel-arm64.zip -o /tmp/Relabel.zip &amp;&amp; \
 mkdir -p ~/Applications &amp;&amp; ditto -x -k /tmp/Relabel.zip ~/Applications &amp;&amp; \
 open ~/Applications/Relabel.app</code>
-      <h3 style="margin:26px 0 8px">2 · Download button</h3>
-      <ol><li>Click <a href="https://github.com/jashjacob/relabel-macos/releases/latest/download/Relabel-arm64.zip">Download for Mac</a>, unzip, drag Relabel to Applications.</li>
-      <li>Open it. macOS says it can't check it for malware. Click Done.</li>
-      <li>Open System Settings, Privacy &amp; Security, scroll down and click <b>Open Anyway</b> next to Relabel.</li></ol>
-      <h3 style="margin:26px 0 8px">3 · Build it yourself</h3>
+      <h3 style="margin:26px 0 8px">Or build it yourself</h3>
       <code class="snip">git clone https://github.com/jashjacob/relabel-macos.git
 cd relabel-macos &amp;&amp; ./build.sh
 open ~/Applications/Relabel.app</code>
-      <p style="color:var(--ink-2);font-size:15px;margin:18px 0 0">Needs only Apple's Command Line Tools. Without Apple Intelligence Relabel still works, using basic naming from the text on the file, and it tells you when it does. The download's SHA-256 is on the <a href="https://github.com/jashjacob/relabel-macos/releases/latest">release page</a>.</p>
+      <h3 style="margin:26px 0 8px">Remove it</h3>
+      <code class="snip">pkill -x Relabel; rm -rf ~/Applications/Relabel.app ~/Library/Application\ Support/Relabel</code>
+      <p style="color:var(--ink-2);font-size:15px;margin:18px 0 0">Relabel is not notarized yet, which needs a paid Apple Developer account. Building from source needs only Apple's Command Line Tools. Without Apple Intelligence it still works, using basic naming from the text on the file, and it tells you when it does. Checksums are on the <a href="https://github.com/jashjacob/relabel-macos/releases/latest">release page</a>.</p>
     </div>
   </section>
 
@@ -265,6 +262,11 @@ async function play(){
 document.getElementById('replay').onclick = play;
 play();
 
+document.getElementById('copy').onclick = async e => {
+  const t = document.getElementById('cmdtext').textContent, b = e.currentTarget;
+  try { await navigator.clipboard.writeText(t); b.textContent = 'Copied'; } catch { b.textContent = 'Select and copy'; }
+  setTimeout(() => b.textContent = 'Copy', 1800);
+};
 /* lengths */
 const L = [
   ['Nashik to Chennai flights', 'IndiGo flights Nashik to Chennai from ₹10,487', 'IndiGo flights from Nashik to Chennai with one stop from ₹10,487'],
