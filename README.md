@@ -42,3 +42,21 @@ Only the Command Line Tools are required.
 7. Settings
 8. Learning
 9. Polish
+
+## Status
+
+All nine build steps are done: folder selection and bookmarks, naming with Apple's on-device model (text and image),
+watcher, queue, history with undo/redo, rename pill, recent renames list, Tidy Up, drag and drop, Settings,
+learning from your renames, and status and accessibility polish.
+
+Command line tool (same engine as the app):
+
+```bash
+swift build -c release
+.build/release/relabel spike <file>            # names at all three lengths, with and without the model
+.build/release/relabel tidy <folder> --dry-run # preview a whole folder
+.build/release/relabel history | undo
+swift run -c release RelabelChecks             # the test suite (the Command Line Tools have no XCTest)
+```
+
+Relabel makes no network calls. It was verified by running the naming pipeline with all network access denied.

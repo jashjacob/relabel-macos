@@ -35,6 +35,8 @@ final class TidyModel {
     var selectedCount: Int { items.filter { $0.selected && $0.status == .ready || $0.selected && $0.editedBase != nil }.count }
     var visibleItems: [TidyItem] { includeGood ? items : items.filter { !$0.alreadyGood || $0.status != .pending } }
 
+    func cancel() { task?.cancel() }
+
     func chooseFolder() {
         if let url = FolderPicker.choose(message: "Choose a folder to tidy up", startingAt: folder ?? SuggestedFolders.downloads()) { open(folder: url) }
     }

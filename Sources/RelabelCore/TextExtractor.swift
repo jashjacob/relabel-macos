@@ -24,6 +24,9 @@ public enum TextExtractor {
     public static let firstRunTimeout: TimeInterval = 240
     private static let warmFlag = WarmFlag()
 
+    /// True once Vision's text model has loaded (the first run on a Mac can take about a minute).
+    public static var isWarm: Bool { warmFlag.isWarm }
+
     /// Loads Vision's text model in the background so the first real file isn't slow. Safe to call repeatedly.
     public static func warmUp() async {
         guard !warmFlag.isWarm else { return }

@@ -47,7 +47,7 @@ struct RecentRenamesList: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Recent renames").font(.subheadline).foregroundStyle(.secondary)
+            Text("Recent renames").font(.subheadline).foregroundStyle(.secondary).accessibilityAddTraits(.isHeader)
             if model.recents.isEmpty {
                 Text("Nothing named yet.")
                     .font(.callout).foregroundStyle(.tertiary)
@@ -111,11 +111,19 @@ struct RecentRow: View {
                 .onAppear { focused = true }
                 .accessibilityLabel("New name. Press Return to rename, Escape to cancel")
         } else {
-            Text(applied ? record.newName : record.oldName)
-                .font(.callout.weight(.medium)).lineLimit(1).truncationMode(.middle)
-                .contentShape(Rectangle())
-                .onTapGesture { if applied { model.beginEdit(record) } }
-                .help(applied ? "Click to edit the name" : "")
+            HStack(spacing: 4) {
+                Text(applied ? record.newName : record.oldName)
+                    .font(.callout.weight(.medium)).lineLimit(1).truncationMode(.middle)
+                    .contentShape(Rectangle())
+                    .onTapGesture { if applied { model.beginEdit(record) } }
+                    .help(applied ? "Click to edit the name" : "")
+                    .accessibilityHint(applied ? "Double tap to edit the name" : "")
+                if let note = record.fallbackNote {
+                    Text("Basic").font(.system(size: 9, weight: .semibold)).padding(.horizontal, 4).padding(.vertical, 1)
+                        .background(.orange.opacity(0.25), in: Capsule())
+                        .help(note).accessibilityLabel("Basic naming. \(note)")
+                }
+            }
         }
     }
 

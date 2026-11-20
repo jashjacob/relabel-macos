@@ -260,6 +260,8 @@ struct GeneralTab: View {
         @Bindable var m = model
         Form {
             Section("General") {
+                Toggle("Name new files automatically", isOn: $m.prefs.automaticNaming)
+                Text("Off: Relabel only names files you drop on it or tidy up yourself.").font(.caption).foregroundStyle(.secondary)
                 Toggle("Open at login", isOn: Binding(get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
                 if let msg = model.loginMessage { Text(msg).font(.caption).foregroundStyle(.orange) }
                 Toggle("Pause while in Low Power Mode", isOn: $m.prefs.pauseInLowPowerMode)

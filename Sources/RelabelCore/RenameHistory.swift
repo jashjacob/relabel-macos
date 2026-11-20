@@ -22,6 +22,8 @@ public struct HistoryRecord: Codable, Identifiable, Sendable, Equatable {
     public var userName: String? = nil
     /// Frontmost app when a screenshot was taken (kept so the style profile can tell if names include it).
     public var appName: String? = nil
+    /// Set when this name came from basic naming instead of Apple's model, with the reason.
+    public var fallbackNote: String? = nil
 
     public var oldName: String { (oldPath as NSString).lastPathComponent }
     public var newName: String { (newPath as NSString).lastPathComponent }
@@ -75,13 +77,14 @@ public final class RenameHistory: @unchecked Sendable {
     /// Performs the rename and records it. Never overwrites: the caller supplies a free destination.
     @discardableResult
     public func rename(from old: URL, to new: URL, source: RenameSource, kind: FileKind,
-                       relabelName: String, summary: String, appName: String? = nil) throws -> HistoryRecord {
+                       relabelName: String, summary: String, appName: String? = nil,
+                       fallbackNote: String? = nil) throws -> HistoryRecord {
         guard let key = FileIdentity.key(old) else { throw HistoryError.movedOrRenamed(verb: "rename") }
         try FileManager.default.moveItem(at: old, to: new)   // fails if `new` exists
         let rec = HistoryRecord(id: UUID(), time: Date(), oldPath: old.path, newPath: new.path, source: source,
                                 folder: old.deletingLastPathComponent().path, kind: kind, state: .applied,
                                 inodeKey: key, modified: FileIdentity.modified(new) ?? Date(),
-                                relabelName: relabelName, summary: summary, appName: appName)
+                                relabelName: relabelName, summary: summary, appName: appName, fallbackNote: fallbackNote)
         add(rec)
         return rec
     }

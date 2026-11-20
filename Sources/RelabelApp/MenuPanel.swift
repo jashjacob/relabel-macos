@@ -146,6 +146,9 @@ struct MenuPanelView: View {
                 .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
                 .foregroundStyle(model.isDraggingFile ? Color.accentColor : Color.secondary.opacity(0.5)))
             .background(model.isDraggingFile ? Color.accentColor.opacity(0.1) : .clear, in: RoundedRectangle(cornerRadius: 10))
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Drop area")
+            .accessibilityHint("Drag a screenshot or PDF here to name it.")
     }
 
     private var statusColor: Color {

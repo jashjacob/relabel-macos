@@ -32,6 +32,8 @@ public struct NamingPreferences: Codable, Sendable, Equatable {
     public var copyScreenshotsToClipboard = false
     /// Learning from the user's own renames (step 8). Off keeps the data but stops using it.
     public var learnFromRenames = true
+    /// Name new files in watched folders on its own. Off: only dropped files and Tidy Up are named.
+    public var automaticNaming = true
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -44,6 +46,7 @@ public struct NamingPreferences: Codable, Sendable, Equatable {
         pauseInLowPowerMode = try c.decodeIfPresent(Bool.self, forKey: .pauseInLowPowerMode) ?? true
         copyScreenshotsToClipboard = try c.decodeIfPresent(Bool.self, forKey: .copyScreenshotsToClipboard) ?? false
         learnFromRenames = try c.decodeIfPresent(Bool.self, forKey: .learnFromRenames) ?? true
+        automaticNaming = try c.decodeIfPresent(Bool.self, forKey: .automaticNaming) ?? true
     }
 
     public init(length: NameLength = .standard, includeAppName: Bool = false,
