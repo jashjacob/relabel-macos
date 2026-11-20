@@ -31,6 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         tidyWindow = SingleWindow(title: "Tidy Up", style: [.titled, .closable, .resizable, .miniaturizable]) { [model] in
             NSHostingView(rootView: TidyView(model: model.tidy))
         }
+        tidyWindow.onClose = { [model] in model.tidy.cancel() }
         model.openTidyWindow = { [unowned self] in tidyWindow.show() }
         model.openSettings = { [unowned self] in settingsWindow.show() }
         model.openWelcome = { [unowned self] in welcomeWindow.show() }
@@ -94,9 +95,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
     }
 
+    private var lastIconKey = ""
+
+    /// Redraws the menu bar icon only when something visible changed. Honors Reduce Motion (no sweeping or blinking).
     private func refreshIcon() {
         guard let b = statusItem.button else { return }
-        b.image = MenuBarFace.image(style: model.iconStyle, state: model.status.iconState, frame: model.tick, dragging: model.isDraggingFile)
+        let state = model.status.iconState
+        let animate = state == .naming && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        let frame = animate ? model.tick : 0
+        let key = "\(model.iconStyle.rawValue)|\(state)|\(frame)|\(model.isDraggingFile)|\(model.status.title)"
+        guard key != lastIconKey else { return }
+        lastIconKey = key
+        b.image = MenuBarFace.image(style: model.iconStyle, state: state, frame: frame, dragging: model.isDraggingFile)
         b.setAccessibilityLabel(model.status.accessibilityLabel)
     }
 

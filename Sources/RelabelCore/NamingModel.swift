@@ -123,20 +123,26 @@ public enum NamingModel {
         guard avail == .available else { return (basic, avail.explanation) }
         let withImage = prefs.useImage && !forceTextOnly && supportsImages && ctx.image != nil
         guard withImage || ctx.text.count >= 3 || !ctx.labels.isEmpty else { return (basic, "No text found to name it from.") }
-        do {
-            var c = ctx
-            if !withImage { c.image = nil }
-            let text = prompt(for: c, prefs: prefs, examples: examples, styleHint: styleHint)
-            let session = LanguageModelSession(instructions: rules)
-            let full: Prompt
-            if let img = c.image { full = Prompt { text; Attachment(img.image) } } else { full = Prompt { text } }
-            let response = try await session.respond(to: full, generating: GeneratedName.self,
-                                                     options: GenerationOptions(sampling: .greedy))
-            let title = Sanitizer.restoreAcronyms(Sanitizer.sentenceCased(Sanitizer.cleanTitle(response.content.title)), source: ctx.text)
-            guard !title.isEmpty else { return (basic, "No better name found. Using basic naming.") }
-            return (NamingResult(title: title, category: response.content.category, source: .model), nil)
-        } catch {
-            return (basic, "Apple Intelligence is busy or couldn't answer (\(error.localizedDescription)). Using basic naming.")
+        var lastError: Error?
+        for attempt in 0..<2 {
+            do {
+                var c = ctx
+                if !withImage { c.image = nil }
+                let text = prompt(for: c, prefs: prefs, examples: examples, styleHint: styleHint)
+                let session = LanguageModelSession(instructions: rules)
+                let full: Prompt
+                if let img = c.image { full = Prompt { text; Attachment(img.image) } } else { full = Prompt { text } }
+                let response = try await session.respond(to: full, generating: GeneratedName.self,
+                                                         options: GenerationOptions(sampling: .greedy))
+                let title = Sanitizer.restoreAcronyms(Sanitizer.sentenceCased(Sanitizer.cleanTitle(response.content.title)), source: ctx.text)
+                guard !title.isEmpty else { return (basic, "No better name found. Used basic naming.") }
+                return (NamingResult(title: title, category: response.content.category, source: .model), nil)
+            } catch {
+                lastError = error
+                if attempt == 0 { try? await Task.sleep(for: .seconds(1.5)) }     // busy? give it a moment, then once more
+            }
         }
+        _ = lastError
+        return (basic, "Apple Intelligence is busy, try again. Used basic naming this time.")
     }
 }

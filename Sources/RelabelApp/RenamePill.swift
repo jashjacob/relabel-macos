@@ -49,8 +49,19 @@ final class PillController {
         if let error = onUndo(r) { present(.message(error), lasting: 6) } else { present(.undone(r), lasting: 3) }
     }
 
+    private func spoken(_ c: PillModel.Content) -> String {
+        switch c {
+        case .renamed(let r): "Renamed \(r.oldName) to \(r.newName)." + (r.fallbackNote.map { " \($0)" } ?? "")
+        case .undone(let r): "Restored \(r.oldName)."
+        case .failed(_, let d): "Couldn't name it this time. Try again. \(d)"
+        case .message(let m): m
+        }
+    }
+
     private func present(_ c: PillModel.Content, lasting seconds: Double = 6) {
         model.content = c
+        NSAccessibility.post(element: NSApp as Any, notification: .announcementRequested,
+                             userInfo: [.announcement: spoken(c), .priority: NSAccessibilityPriorityLevel.high.rawValue])
         if let screen = NSScreen.main {
             let size = panel.frame.size
             panel.setFrameOrigin(NSPoint(x: screen.visibleFrame.midX - size.width / 2,
@@ -91,6 +102,7 @@ struct RenamePillView: View {
                     Text("Renamed").font(.caption).foregroundStyle(.secondary)
                     Text(r.oldName).font(.caption2).foregroundStyle(.tertiary).lineLimit(1).truncationMode(.middle)
                     Text(r.newName).font(.callout.weight(.medium)).lineLimit(1).truncationMode(.middle)
+                    if let note = r.fallbackNote { Text(note).font(.caption2).foregroundStyle(.orange).lineLimit(2) }
                 case .undone(let r):
                     Text("Restored").font(.caption).foregroundStyle(.secondary)
                     Text(r.oldName).font(.callout.weight(.medium)).lineLimit(1).truncationMode(.middle)

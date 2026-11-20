@@ -36,6 +36,7 @@ public final class NamingPipeline: @unchecked Sendable {
         public var source: NamingResult.Source
         public var fileDate: Date
         public var summary: String
+        public var fallbackNote: String? = nil
     }
 
     public enum ProposalOutcome: Sendable, Equatable {
@@ -55,13 +56,14 @@ public final class NamingPipeline: @unchecked Sendable {
         } catch {
             return .failed(error.localizedDescription)
         }
-        let (result, _) = await namer(ctx, p)
+        let (result, note) = await namer(ctx, p)
         let hasContent = !ctx.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         guard !Sanitizer.cleanTitle(result.title).isEmpty, hasContent || result.source == .model else {
             return .kept(Self.noBetterName)
         }
         return .proposal(Proposal(title: result.title, category: result.category, source: result.source,
-                                  fileDate: ctx.fileDate, summary: String(ctx.text.prefix(300))))
+                                  fileDate: ctx.fileDate, summary: String(ctx.text.prefix(300)),
+                                  fallbackNote: result.source == .fallback ? (note ?? "Used basic naming.") : nil))
     }
 
     public func process(_ job: RenameJob) async -> JobOutcome {
@@ -88,7 +90,8 @@ public final class NamingPipeline: @unchecked Sendable {
         markers.mark(job.url, .renamed)          // before the move, so the watcher can't pick the new name up
         do {
             let rec = try history.rename(from: job.url, to: target, source: job.source, kind: job.kind,
-                                         relabelName: target.lastPathComponent, summary: proposal.summary, appName: job.appName)
+                                         relabelName: target.lastPathComponent, summary: proposal.summary, appName: job.appName,
+                                         fallbackNote: proposal.fallbackNote)
             return .renamed(rec)
         } catch {
             markers.unmark(job.url)

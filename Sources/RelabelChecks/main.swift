@@ -30,7 +30,10 @@ run("style profile") { LearningChecks.style() }
 run("detect renames in Finder") { try LearningChecks.detection() }
 run("prompt includes learning") { LearningChecks.promptHelp() }
 run("processed markers") { try RenameChecks.markers() }
-do { try await RenameChecks.hold(); print(failures == 0 ? "ok   hold / release" : "see failures above") } catch { failures += 1; print("ERROR hold \(error)") }
+do { try await RenameChecks.hold(); do { try await ExtractionChecks.extraction(); print(failures == 0 ? "ok   text extraction on fixtures" : "see failures above") } catch { failures += 1; print("ERROR extraction \(error)") }
+await ExtractionChecks.basicNaming(); print(failures == 0 ? "ok   basic naming" : "see failures above")
+do { try await ExtractionChecks.fallbackNoteRecorded(); print(failures == 0 ? "ok   fallback note + no better name" : "see failures above") } catch { failures += 1; print("ERROR fallback \(error)") }
+print(failures == 0 ? "ok   hold / release" : "see failures above") } catch { failures += 1; print("ERROR hold \(error)") }
 do { try await RenameChecks.endToEnd(); do { try await TidyChecks.planner(); print(failures == 0 ? "ok   tidy planner" : "see failures above") } catch { failures += 1; print("ERROR tidy \(error)") }
 print(failures == 0 ? "ok   watcher + queue + rename end to end" : "see failures above") } catch { failures += 1; print("ERROR e2e \(error)") }
 print(failures == 0 ? "All checks passed" : "\(failures) failure(s)")

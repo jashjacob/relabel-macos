@@ -3,6 +3,7 @@ import Foundation
 /// What the app is doing right now. Drives the menu bar icon and the status line.
 public enum AppStatus: Equatable, Sendable {
     case idle
+    case gettingReady
     case namingOne
     case namingBatch
     case paused
@@ -16,6 +17,7 @@ public enum AppStatus: Equatable, Sendable {
     public var title: String {
         switch self {
         case .idle: "Watching Screenshots"
+        case .gettingReady: "Getting ready"
         case .namingOne: "Naming a screenshot"
         case .namingBatch: "Naming a batch"
         case .paused: "Paused"
@@ -36,6 +38,7 @@ public enum AppStatus: Equatable, Sendable {
         case .paused, .coolingDown, .lowPowerPaused, .waitingForAppleIntelligence, .automaticNamingOff: .paused
         case .folderUnreachable, .noFolder: .error
         case .idle: .idle
+        case .gettingReady: .naming
         }
     }
 }

@@ -27,6 +27,7 @@ final class AppModel {
     }
     private(set) var aiAvailability: ModelAvailability = .available
     private(set) var hold: HoldReason?
+    private(set) var warming = false
     private(set) var launchAtLogin = false
     var loginMessage: String?
     var settingsTab = 0
@@ -37,6 +38,7 @@ final class AppModel {
     var prefs = NamingPreferences() {
         didSet {
             engine.prefs = prefs
+            if oldValue.automaticNaming != prefs.automaticNaming { applyWatching() }
             updateHold()
             if let d = try? JSONEncoder().encode(prefs) { UserDefaults.standard.set(d, forKey: "namingPrefs") }
         }
@@ -75,7 +77,16 @@ final class AppModel {
         }
         updateHold()
         refreshFolders()
-        Task { await TextExtractor.warmUp() }   // first recognition on a Mac loads a model; do it now, not on the first file
+        // The first text recognition on a Mac loads a model (about a minute once): do it now, and say so if it's slow.
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1))
+            if !TextExtractor.isWarm { self?.warming = true; self?.updateStatus() }
+        }
+        Task { [weak self] in
+            await TextExtractor.warmUp()
+            self?.warming = false
+            self?.updateStatus()
+        }
     }
 
     /// Messages for every folder we can't reach, shown in the menu panel.
@@ -104,7 +115,7 @@ final class AppModel {
                 }
             }
         }
-        if !isPaused { engine.sync(watchedFolders()) }
+        if !isPaused && prefs.automaticNaming { engine.sync(watchedFolders()) }
         updateStatus()
     }
 
@@ -157,6 +168,8 @@ final class AppModel {
         case .batch: status = .namingBatch; return
         case .idle: break
         }
+        if !prefs.automaticNaming { status = .automaticNamingOff; return }
+        if warming, hasAnyFolder { status = .gettingReady; return }
         if aiAvailability == .stillLoading, screenshotsFolder?.isReachable == true || !pdfFolders.isEmpty {
             status = .waitingForAppleIntelligence
         } else if let s = screenshotsFolder {
@@ -172,7 +185,12 @@ final class AppModel {
 
     func togglePause() {
         isPaused.toggle()
-        engine.setPaused(isPaused, folders: watchedFolders())
+        applyWatching()
+    }
+
+    /// Watchers run only when Relabel isn't paused and automatic naming is on. Files saved while off are left alone.
+    private func applyWatching() {
+        engine.setPaused(isPaused || !prefs.automaticNaming, folders: watchedFolders())
         updateStatus()
     }
 
@@ -190,7 +208,10 @@ final class AppModel {
         case .failed(let why):
             if job.source != .tidy { pill.showFailure(job, why) }
         case .kept(let why):
-            if job.source == .drop { pill.showMessage("\(job.url.lastPathComponent): \(why).") }
+            // Say so when nothing better was found or the file can't be read; stay quiet about files that are already fine.
+            if job.source == .drop || why == NamingPipeline.noBetterName || why == ExtractionError.notAnImage.localizedDescription {
+                pill.showMessage("\(job.url.lastPathComponent): \(why). It keeps its name.")
+            }
         case .skipped(let why):
             if job.source == .drop { pill.showMessage(why) }
         }
