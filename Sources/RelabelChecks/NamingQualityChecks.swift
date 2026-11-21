@@ -36,4 +36,17 @@ enum NamingQualityChecks {
         check(ListingFacts.extract(from: "Quarterly budget\nDepartment | Q1 | Q2\nTotal | 197,150") == nil, "ordinary text gives no facts")
         check(ListingFacts.extract(from: "CNC | PLC\nretrofit of machines") == nil, "two codes without times are not a route")
     }
+
+    static func shopping() {
+        let hotels = "Hotels in Goa\n3 properties found\nSeaview Resort & Spa\n★★★★ 9.1 Excellent (812 reviews) | ₹4,200\nper night\nPalm Grove Inn\n₹3,150 | per night\nCoral Bay Hotel\n₹5,600\nper night"
+        check(RuleNamer.name(for: hotels, length: .standard)?.title == "Hotels in Goa from ₹3,150 per night", "hotel list: \(RuleNamer.name(for: hotels, length: .standard)?.title ?? "nil")")
+        check(RuleNamer.name(for: hotels, length: .short)?.title == "Hotels in Goa", "short hotel list")
+        let one = "Seaview Resort & Spa\n★★★★ 9.1 (812 reviews)\n₹4,200\nper night\nBook now"
+        check(RuleNamer.name(for: one, length: .standard)?.title == "Seaview Resort & Spa ₹4,200 per night", "single hotel: \(RuleNamer.name(for: one, length: .standard)?.title ?? "nil")")
+        let product = "Trailhead 40L Hiking Backpack\n★★★★☆ 4.6 (5,402 ratings)\n$89.99\nIn stock. Free shipping over $50\nBuy now"
+        check(RuleNamer.name(for: product, length: .standard)?.title == "Trailhead 40L Hiking Backpack $89.99", "product: \(RuleNamer.name(for: product, length: .standard)?.title ?? "nil")")
+        check(RuleNamer.name(for: product, length: .short)?.title == "Trailhead 40L Hiking Backpack", "product short")
+        check(RuleNamer.name(for: "Meeting notes\nBuy now pay later is great\nNo price here", length: .standard) == nil, "no price, no rule name")
+        check(RuleNamer.name(for: "Quarterly budget\nTotal | $197,150 per night shift", length: .standard) == nil, "budget text is left to the model")
+    }
 }

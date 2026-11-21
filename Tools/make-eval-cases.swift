@@ -167,4 +167,29 @@ do {
     c.text("1. Boil the pasta until al dente.", 460, 190, 18); c.text("2. Fry garlic, add tomatoes and simmer.", 460, 224, 18); c.text("3. Stir in cream and basil.", 460, 258, 18)
     c.save("recipe-tomato-pasta.png")
 }
+// 11. Hotel results.
+do {
+    var c = Canvas(size: NSSize(width: 1000, height: 640))
+    c.text("Hotels in Goa", 40, 24, 30, bold: true); c.text("3 properties found", 40, 66, 16, color: grey)
+    let hotels = [("Seaview Resort & Spa", "★★★★  9.1 Excellent (812 reviews)", "₹4,200"), ("Palm Grove Inn", "★★★  8.4 Very good (390 reviews)", "₹3,150"),
+                  ("Coral Bay Hotel", "★★★★★  9.4 Superb (1,204 reviews)", "₹5,600")]
+    for (i, h) in hotels.enumerated() {
+        let y = CGFloat(110 + i * 170)
+        c.fill(NSRect(x: 40, y: y, width: 920, height: 150), NSColor(white: 0.96, alpha: 1), radius: 12)
+        c.text(h.0, 240, y + 20, 24, bold: true); c.text(h.1, 240, y + 62, 16, color: grey)
+        c.text(h.2, 0, y + 30, 32, bold: true, right: 930); c.text("per night", 0, y + 74, 16, color: grey, right: 930)
+    }
+    c.save("hotels-goa.png")
+}
+
+// 12. Product page with dollar prices.
+do {
+    var c = Canvas(size: NSSize(width: 1000, height: 520))
+    c.text("Trailhead 40L Hiking Backpack", 40, 30, 30, bold: true)
+    c.text("★★★★☆  4.6  (5,402 ratings)", 40, 80, 17, color: grey)
+    c.text("$89.99", 40, 130, 42, bold: true)
+    c.text("In stock. Free shipping over $50", 40, 200, 17)
+    c.fill(NSRect(x: 40, y: 260, width: 260, height: 56), .systemYellow, radius: 12); c.text("Buy now", 100, 275, 22, bold: true)
+    c.save("product-backpack.png")
+}
 print("wrote eval images to \(out.path)")
