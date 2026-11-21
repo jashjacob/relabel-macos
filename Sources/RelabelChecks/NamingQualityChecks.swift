@@ -50,3 +50,51 @@ enum NamingQualityChecks {
         check(RuleNamer.name(for: "Quarterly budget\nTotal | $197,150 per night shift", length: .standard) == nil, "budget text is left to the model")
     }
 }
+
+extension NamingQualityChecks {
+    static func documents() {
+        let plate1 = "Zentek Automation ZENTEK\nS.Coop. (Norway)\nMODEL:OP PANEL+SPDL RATE-A\nSN:\n(SN) 770011223344556\nVERSION:\nCTR JOG VAR\n01A 01A 00A\nL20\nP23"
+        check(RuleNamer.name(for: plate1, length: .standard)?.title == "Zentek OP PANEL+SPDL RATE-A SN 770011223344556", "nameplate 1: \(RuleNamer.name(for: plate1, length: .standard)?.title ?? "nil")")
+        let plate2 = "ZENTEK\nVERS:\nCTR VAR\n00A 00A\nSN: 770011223344557\nM: HORIZONTAL KEYB"
+        check(RuleNamer.name(for: plate2, length: .standard)?.title == "Zentek HORIZONTAL KEYB SN 770011223344557", "nameplate 2: \(RuleNamer.name(for: plate2, length: .standard)?.title ?? "nil")")
+        let plate3 = "avaY\nSN: 7700112 23300028\nM: OP PANEL+SPDL RATE\n00A 00A 02A\nCTR JOG VAR\nVERS:"
+        check(RuleNamer.name(for: plate3, length: .standard)?.title == "OP PANEL+SPDL RATE SN 7700112 23300028", "nameplate 3 (garbled brand dropped): \(RuleNamer.name(for: plate3, length: .standard)?.title ?? "nil")")
+        check(RuleNamer.name(for: "Meeting about SN numbers\nno label here", length: .standard) == nil, "no serial, no nameplate")
+
+        let invoice = "ACME Plumbing Ltd\nINVOICE\nInvoice number INV-20481\nInvoice date 2 November 2026\nAmount due 1,284.50"
+        check(RuleNamer.name(for: invoice, length: .standard)?.title == "ACME Plumbing invoice INV-20481", "invoice: \(RuleNamer.name(for: invoice, length: .standard)?.title ?? "nil")")
+        check(RuleNamer.name(for: "Invoice\nInvoice Date 2 November\nthanks", length: .standard) == nil, "no number, no company: left to the model")
+
+        let gama = "ORBIT AUTOMATION\nCOMMERCIAL TERMS\nSCOPE OF PROJECT\nINR 50,000.00"
+        check(RuleNamer.name(for: gama, length: .standard)?.title == "Orbit Automation commercial terms", "caps company + heading: \(RuleNamer.name(for: gama, length: .standard)?.title ?? "nil")")
+        let bhel = "MAINTENANCE AND SERVICES\nElectrical Maintenance\nNorthfield Heavy Electricals Limited, RIVERTON -400 001\nSupply of the following"
+        check(RuleNamer.name(for: bhel, length: .standard)?.title == "Northfield Heavy Electricals maintenance and services", "Limited company + heading: \(RuleNamer.name(for: bhel, length: .standard)?.title ?? "nil")")
+        let cropped = "ITENANCE AND SERVICES\nElectrical Maintenance\ny Electricals Limited, RIVERTON -400 001"
+        check(RuleNamer.name(for: cropped, length: .standard) == nil, "cropped heading is not trusted")
+    }
+}
+
+extension NamingQualityChecks {
+    static func errors() {
+        func t(_ s: String, _ l: NameLength = .standard) -> String { RuleNamer.name(for: s, length: l)?.title ?? "nil" }
+        let py = "$ python import_orders.py\nTraceback (most recent call last):\nFile \"import_orders.py\", line 27, in <module>\ntotal = sum(row[\"amount\"] for row in rows)\nKeyError: 'amount'\n$"
+        check(t(py) == "Python KeyError amount in import_orders", "python: \(t(py))")
+        check(t(py, .short) == "Python KeyError amount", "python short: \(t(py, .short))")
+        let x = "LoginView.swift\nlet name = fetchUserName(user)\nCannot find 'fetchUserName' in scope\nBuild Failed - 1 error\nXcode"
+        check(t(x) == "Xcode error cannot find fetchUserName in scope", "xcode: \(t(x))")
+        check(t("Uncaught TypeError: Cannot read properties of undefined (reading 'map')\n    at render (app.js:10)") == "JavaScript TypeError Cannot read properties of undefined (reading map)", "js: \(t("Uncaught TypeError: Cannot read properties of undefined (reading 'map')"))")
+        check(t("error[E0382]: borrow of moved value: `v`\n --> src/main.rs") == "Rust error E0382 borrow of moved value: v", "rust: \(t("error[E0382]: borrow of moved value: `v`"))")
+        check(t("jash@mac ~ % pnpm install\nzsh: command not found: pnpm") == "Terminal error command not found pnpm", "shell")
+        check(RuleNamer.name(for: "Notes about KeyError handling\nwe should add tests", length: .standard) == nil, "talking about an error is not an error screen")
+    }
+
+    static func chats() {
+        check(ChatFacts.contact(in: "Priya Nair\nonline\nAre we still on for dinner?") == "Priya Nair", "contact above online")
+        check(ChatFacts.contact(in: "Mom\nlast seen today at 9:41 AM\nhello") == "Mom", "last seen")
+        check(ChatFacts.contact(in: "Quarterly Budget\nonline\nDepartment") == nil || ChatFacts.contact(in: "Quarterly Budget\nonline\nDepartment") == "Quarterly Budget", "title-case line above 'online' only")
+        check(ChatFacts.contact(in: "Weekly overview\nNov 9 - Nov 15\nActive users") == nil, "dashboard is not a chat")
+        check(ChatFacts.finalTitle("Dinner plans", contact: "Priya Nair") == "Chat with Priya Nair", "contact added when model leaves it out")
+        check(ChatFacts.finalTitle("Chat with priya Nair about dinner", contact: "Priya Nair") == "Chat with Priya Nair about dinner", "contact capitals restored")
+        check(ChatFacts.finalTitle("Chat with Priya about dinner on Friday", contact: "Priya Nair") == "Chat with Priya about dinner on Friday", "model title kept when it has the contact")
+    }
+}

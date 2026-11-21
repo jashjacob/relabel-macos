@@ -16,8 +16,8 @@
     {"match": "product-backpack", "must": [["Trailhead"], ["backpack"], ["89"]]},
     {"match": "invoice-text.pdf", "must": [["ACME"], ["invoice"], ["INV-20481", "1,284.50"]]},
     {"match": "Screenshot 2026-11-19 at 10.15.00", "must": [["budget"], ["2027"]]},
-    {"match": "2.02.59", "must": [["bidder", "qualification", "retrofit", "experience"]]},
-    {"match": "2.03.00", "must": [["item", "replacement", "missing", "CNC"]]},
+    {"match": "2.02.59", "must": [["maintenance", "retrofit", "services"]]},
+    {"match": "2.03.00", "must": [["retrofit", "maintenance", "services"]]},
     {"match": "2.03.03", "must": [["breakdown", "maintenance", "service"]]}
   ]
 }

@@ -110,6 +110,7 @@ public enum NamingModel {
             p += "Corrections this user made to earlier names for similar files. Follow their style:\n" + examples.map { "- \($0)" }.joined(separator: "\n") + "\n"
         }
         if let styleHint { p += "The user's usual naming style: \(styleHint). Follow it unless the text clearly needs more.\n" }
+        if ctx.kind == .screenshot, let contact = ChatFacts.contact(in: ctx.text) { p += ChatFacts.hint(contact: contact) }
         p += "\nText on the \(ctx.kind == .pdf ? "first pages" : "screen"), top to bottom:\n\(ctx.promptText())"
         return p
     }
@@ -119,7 +120,8 @@ public enum NamingModel {
                             useModel: Bool = true, forceTextOnly: Bool = false) async -> (result: NamingResult, note: String?) {
         let basic = BasicNamer.name(for: ctx, prefs: prefs)
         // Flight lists, hotel results and product pages have a clear pattern. Plain rules name them better than the model, and instantly.
-        if ctx.kind == .screenshot, let named = RuleNamer.name(for: ctx.text, length: prefs.length) {
+        if prefs.customPDFInstruction.trimmingCharacters(in: .whitespaces).isEmpty || ctx.kind == .screenshot,
+           let named = RuleNamer.name(for: ctx.text, length: prefs.length) {
             return (NamingResult(title: named.title, category: named.category, source: .model), nil)
         }
         guard useModel else { return (basic, "Model skipped") }
@@ -143,6 +145,7 @@ public enum NamingModel {
                                                          options: GenerationOptions(sampling: .greedy))
                 var title = Sanitizer.restoreAcronyms(Sanitizer.sentenceCased(Sanitizer.cleanTitle(response.content.title)), source: ctx.text)
                 title = Sanitizer.restoreProperNames(TitleCheck.stripped(title), source: ctx.text)
+                if ctx.kind == .screenshot, let contact = ChatFacts.contact(in: ctx.text) { title = ChatFacts.finalTitle(title, contact: contact) }
                 guard !title.isEmpty else { return (basic, "No better name found. Used basic naming.") }
                 let problem = TitleCheck.problem(title, length: prefs.length, sourceText: ctx.text)
                 if best == nil || problem == nil { best = (title, response.content.category) }

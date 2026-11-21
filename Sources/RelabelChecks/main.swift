@@ -35,6 +35,9 @@ run("prompt includes learning") { LearningChecks.promptHelp() }
 run("OCR rows") { NamingQualityChecks.rows() }
 run("listing facts") { NamingQualityChecks.listing() }
 run("hotels and products") { NamingQualityChecks.shopping() }
+run("nameplates, invoices, headings") { NamingQualityChecks.documents() }
+run("error screens") { NamingQualityChecks.errors() }
+run("chat contact") { NamingQualityChecks.chats() }
 run("title checks") { NamingQualityChecks.titles() }
 run("processed markers") { try RenameChecks.markers() }
 do { try await RenameChecks.hold(); do { try await ExtractionChecks.extraction(); print(failures == 0 ? "ok   text extraction on fixtures" : "see failures above") } catch { failures += 1; print("ERROR extraction \(error)") }

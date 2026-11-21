@@ -9,6 +9,10 @@ public enum RuleNamer {
         if let f = ListingFacts.extract(from: text) { return Named(title: f.title(length: length), category: "listing") }
         if let t = hotel(text, length: length) { return Named(title: t, category: "listing") }
         if let t = product(text, length: length) { return Named(title: t, category: "website") }
+        if let t = error(text, length: length) { return Named(title: t, category: "error") }
+        if let t = nameplate(text, length: length) { return Named(title: t, category: "label") }
+        if let t = invoice(text) { return Named(title: t, category: "invoice") }
+        if let t = heading(text) { return Named(title: t, category: "document") }
         return nil
     }
 
