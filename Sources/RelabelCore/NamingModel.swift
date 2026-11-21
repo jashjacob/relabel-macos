@@ -118,6 +118,10 @@ public enum NamingModel {
     public static func name(for ctx: FileContext, prefs: NamingPreferences, examples: [String] = [], styleHint: String? = nil,
                             useModel: Bool = true, forceTextOnly: Bool = false) async -> (result: NamingResult, note: String?) {
         let basic = BasicNamer.name(for: ctx, prefs: prefs)
+        // A flight list has a clear route and price. Plain rules name it better than the model does, and instantly.
+        if ctx.kind == .screenshot, let facts = ListingFacts.extract(from: ctx.text) {
+            return (NamingResult(title: facts.title(length: prefs.length), category: "listing", source: .model), nil)
+        }
         guard useModel else { return (basic, "Model skipped") }
         let avail = availability()
         guard avail == .available else { return (basic, avail.explanation) }
