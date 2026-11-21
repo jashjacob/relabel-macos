@@ -31,10 +31,17 @@ public enum TitleCheck {
         return words.joined(separator: " ")
     }
 
-    /// Cuts a title that is still too long to the word limit.
+    private static let connectives: Set<String> = ["for", "of", "in", "on", "at", "to", "and", "with", "by", "from", "the", "a", "an", "or", "between", "about"]
+
+    /// Cuts a title that is still too long to the word limit, at the last natural break (before "for", "of", "and"...)
+    /// so it doesn't end mid-phrase.
     public static func trimmed(_ title: String, length: NameLength) -> String {
-        let words = title.split(whereSeparator: { $0.isWhitespace })
+        let words = title.split(whereSeparator: { $0.isWhitespace }).map(String.init)
         let cap = maxWords(length)
-        return words.count > cap ? words.prefix(cap).joined(separator: " ") : title
+        guard words.count > cap else { return title }
+        var kept = Array(words.prefix(cap))
+        if let i = kept.lastIndex(where: { connectives.contains($0.lowercased()) }), i >= 3 { kept = Array(kept.prefix(i)) }
+        while kept.count > 2, let l = kept.last, connectives.contains(l.lowercased()) { kept.removeLast() }
+        return kept.joined(separator: " ")
     }
 }

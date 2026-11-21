@@ -70,12 +70,23 @@ public enum Sanitizer {
                 }
             }
         }
-        guard !caps.isEmpty else { return title }
-        return title.split(separator: " ", omittingEmptySubsequences: false).enumerated().map { (i, word) -> String in
+        // Company names in ALL CAPS headings ("NORTHWIND TRADERS"): a word that follows a capitalised word in the
+        // title and follows the same word in an all-caps line gets a capital too.
+        var pairs = Set<String>()
+        for line in source.split(whereSeparator: \.isNewline) where !line.contains(where: \.isLowercase) {
+            let ws = line.split(whereSeparator: { !$0.isLetter }).map { $0.lowercased() }
+            for k in 1..<max(ws.count, 1) where ws[k].count >= 3 { pairs.insert(ws[k - 1] + " " + ws[k]) }
+        }
+        guard !caps.isEmpty || !pairs.isEmpty else { return title }
+        var out: [String] = []
+        for (i, word) in title.split(separator: " ", omittingEmptySubsequences: false).enumerated() {
             let w = String(word)
-            if i > 0, w == w.lowercased(), let c = caps[w], !lowers.contains(w) { return c }
-            return w
-        }.joined(separator: " ")
+            if i > 0, w == w.lowercased(), let c = caps[w], !lowers.contains(w) { out.append(c); continue }
+            if i > 0, w == w.lowercased(), w.count >= 3, let prev = out.last, prev.first?.isUppercase == true,
+               pairs.contains(prev.lowercased() + " " + w), !lowers.contains(w) { out.append(w.capitalized); continue }
+            out.append(w)
+        }
+        return out.joined(separator: " ")
     }
 
     public static func dateString(_ date: Date, calendar: Calendar = .current) -> String {

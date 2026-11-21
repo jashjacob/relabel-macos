@@ -19,6 +19,8 @@ enum NamingQualityChecks {
         check(TitleCheck.problem("One two three four five six seven eight nine ten eleven", length: .standard) != nil, "too long rejected")
         check(TitleCheck.stripped("SkyLark deals flights Select") == "SkyLark flights", "UI words stripped")
         check(TitleCheck.trimmed("a b c d e f g h i j k l m", length: .short).split(separator: " ").count == 8, "trimmed to the cap")
+        check(TitleCheck.trimmed("Attention Is Not Enough Sparse Routing for Long Context", length: .short) == "Attention Is Not Enough Sparse Routing", "trim cuts at a natural break")
+        check(Sanitizer.restoreProperNames("Northwind traders invoice #4471", source: "NORTHWIND TRADERS\nINVOICE #4471") == "Northwind Traders invoice #4471", "all-caps company name restored")
         check(Sanitizer.restoreProperNames("Flights to kochi", source: "Indore to Kochi\\nFlights to Kochi today") == "Flights to Kochi", "place name capital restored")
     }
 
