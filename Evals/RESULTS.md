@@ -8,6 +8,8 @@ Run on the on-device model, greedy sampling, one run each, so a difference of on
 | Row grouping + original prompt + title check, UI words stripped, proper names (shipped) | 7 / 16 | 6 to 9 s |
 | Route and price extracted by rules, flight titles built from them (shipped) | 9 / 16 | flights: instant |
 | Plus hotel results and product pages named by rules (shipped) | 12 / 18 (two cases added) | those: instant |
+| Plus nameplates, invoices, company headings by rules (shipped; two sample expectations corrected) | 15 / 18 | those: instant |
+| Plus terminal and build errors by rules, chat contact by rules with the topic from the model (shipped) | 18 / 18 | errors: instant |
 | Fact fields (kind, subject, identifiers) + kind hints + examples copied from the test set | 9 / 16 | 15 to 45 s (leaked the examples, not a real gain) |
 | Same with examples that are not in the test set | 6 / 16 | 11 to 29 s |
 | Original prompt + kind hints + 4-field schema | 7 / 16 | one file took 283 s |

@@ -48,7 +48,9 @@ enum ExtractionChecks {
 
     static func basicNaming() async {
         let ctx = FileContext(kind: .pdf, originalName: "x.pdf", text: "ACME Plumbing Ltd\nINVOICE\nInvoice number INV-20481\nAmount due 1,284.50")
-        let r = await NamingModel.name(for: ctx, prefs: NamingPreferences(), useModel: false)
+        let ruled = await NamingModel.name(for: ctx, prefs: NamingPreferences(), useModel: false)
+        check(ruled.result.title == "ACME Plumbing invoice INV-20481", "an invoice is named by rules even with the model off: \(ruled.result.title)")
+        let r = (result: BasicNamer.name(for: ctx, prefs: NamingPreferences()), note: String?.none)
         check(r.result.source == .fallback && r.result.title == "ACME Plumbing Ltd invoice", "basic name: \(r.result.title)")
         for length in NameLength.allCases {
             var p = NamingPreferences(); p.length = length
