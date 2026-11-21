@@ -12,6 +12,8 @@
     {"match": "dashboard-weekly-users", "must": [["users", "overview", "analytics"], ["12,480", "weekly"]]},
     {"match": "product-headphones", "must": [["Aurora"], ["headphones"], ["249"]]},
     {"match": "recipe-tomato-pasta", "must": [["tomato"], ["pasta"]]},
+    {"match": "hotels-goa", "must": [["Goa"], ["hotel"], ["3,150", "3150"]]},
+    {"match": "product-backpack", "must": [["Trailhead"], ["backpack"], ["89"]]},
     {"match": "invoice-text.pdf", "must": [["ACME"], ["invoice"], ["INV-20481", "1,284.50"]]},
     {"match": "Screenshot 2026-11-19 at 10.15.00", "must": [["budget"], ["2027"]]},
     {"match": "2.02.59", "must": [["bidder", "qualification", "retrofit", "experience"]]},
