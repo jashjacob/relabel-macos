@@ -59,6 +59,10 @@ h1 .ugly{font:500 .52em/1.2 var(--mono);display:block;color:var(--ink-2);text-de
 .name{font:15px/1.35 var(--mono);min-width:0;overflow-wrap:anywhere}
 .name small{display:block;font:12px var(--sans);color:var(--ink-2);margin-top:3px}
 .row.done .name{color:var(--ink)}
+.n.sel{background:#b9d3ff;border-radius:3px;box-shadow:0 0 0 2px #b9d3ff}
+.row.pdf .thumb{position:relative}
+.row.pdf .thumb::after{content:'PDF';position:absolute;right:3px;bottom:3px;font:700 8px var(--sans);letter-spacing:.04em;background:#d5392a;color:#fff;border-radius:3px;padding:1px 3px}
+.row.flash{background:rgba(255,90,54,.07)}
 .row .tag{margin-left:auto;flex:none;font:13px var(--mono);color:var(--ink-2);opacity:0;transition:opacity .3s}
 .row.done .tag{opacity:1;color:var(--ok)}
 .scan{position:absolute;left:0;right:0;height:3px;background:var(--scan);box-shadow:0 0 22px 6px var(--scan-soft),0 0 2px var(--scan);top:0;opacity:0;pointer-events:none;border-radius:2px}
@@ -255,13 +259,13 @@ const FILES = [
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const rows = document.getElementById('rows'), scan = document.getElementById('scan');
 const els = FILES.map(f => {
-  const r = document.createElement('div'); r.className = 'row';
+  const r = document.createElement('div'); r.className = 'row' + (f.from.endsWith('.pdf') ? ' pdf' : '');
   r.innerHTML = `<div class="thumb">${T[f.t]}</div><div class="name"><span class="n"></span><small></small></div><span class="tag">✓ renamed</span>`;
   rows.appendChild(r); return r;
 });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let token = 0;
-function reset(){ els.forEach((r,i)=>{ r.classList.remove('done'); r.querySelector('.n').textContent = FILES[i].from; r.querySelector('.n').classList.remove('caret'); r.querySelector('small').textContent=''; }); scan.style.opacity = 0; }
+function reset(){ els.forEach((r,i)=>{ r.classList.remove('done','flash'); r.querySelector('.n').classList.remove('sel'); r.querySelector('.n').textContent = FILES[i].from; r.querySelector('.n').classList.remove('caret'); r.querySelector('small').textContent=''; }); scan.style.opacity = 0; }
 function finish(){ els.forEach((r,i)=>{ r.classList.add('done'); r.querySelector('.n').textContent = FILES[i].to; r.querySelector('small').textContent = FILES[i].note; }); scan.style.opacity = 0; }
 async function play(){
   const my = ++token; reset();
@@ -274,10 +278,14 @@ async function play(){
     await sleep(30);
     scan.style.transition = 'top .7s ease-in-out'; scan.style.top = (top + r.offsetHeight - 3) + 'px';
     await sleep(720);
-    n.classList.add('caret');
+    r.classList.add('flash'); n.classList.add('sel'); await sleep(550);          // old name selected, like a Finder rename
+    const from = FILES[i].from;
+    n.classList.remove('sel'); n.classList.add('caret');
+    for (let k = from.length - 1; k >= 0; k -= 3) { if (my !== token) return; n.textContent = from.slice(0, Math.max(k, 0)); await sleep(9); }
+    n.textContent = '';
     const to = FILES[i].to;
     for (let k = 1; k <= to.length; k++) { if (my !== token) return; n.textContent = to.slice(0, k); await sleep(16); }
-    n.classList.remove('caret'); r.classList.add('done'); r.querySelector('small').textContent = FILES[i].note;
+    n.classList.remove('caret'); r.classList.remove('flash'); r.classList.add('done'); r.querySelector('small').textContent = FILES[i].note;
     await sleep(250);
   }
   scan.style.opacity = 0;
