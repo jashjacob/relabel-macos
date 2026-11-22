@@ -22,9 +22,6 @@ final class AppModel {
     var editText = ""
     private(set) var rowErrors: [UUID: String] = [:]
     private var queueState: QueueState = .idle
-    var iconStyle: IconStyle = IconStyle(rawValue: UserDefaults.standard.string(forKey: "iconStyle") ?? "") ?? .scanLine {
-        didSet { UserDefaults.standard.set(iconStyle.rawValue, forKey: "iconStyle") }
-    }
     private(set) var aiAvailability: ModelAvailability = .available
     private(set) var hold: HoldReason?
     private(set) var warming = false

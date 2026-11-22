@@ -222,30 +222,18 @@ struct NamingTab: View {
 struct AppearanceTab: View {
     let model: AppModel
     var body: some View {
-        @Bindable var m = model
         Form {
             Section("Menu bar icon") {
-                Picker("Style", selection: $m.iconStyle) {
-                    ForEach(IconStyle.allCases, id: \.self) { Text($0.label).tag($0) }
-                }
-                .pickerStyle(.radioGroup)
-                ForEach(IconStyle.allCases, id: \.self) { style in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(style.label).font(.subheadline.weight(.semibold))
-                        HStack(spacing: 18) {
-                            ForEach([(IconState.idle, "Idle"), (.naming, "Naming"), (.paused, "Paused"), (.error, "Problem")], id: \.1) { state, label in
-                                VStack(spacing: 2) {
-                                    Image(nsImage: MenuBarFace.image(style: style, state: state, frame: 1)).renderingMode(.template)
-                                        .scaleEffect(1.4).frame(width: 30, height: 26)
-                                    Text(label).font(.caption2).foregroundStyle(.secondary)
-                                }
-                            }
+                HStack(spacing: 18) {
+                    ForEach([(IconState.idle, "Idle"), (.naming, "Naming"), (.paused, "Paused"), (.error, "Problem")], id: \.1) { state, label in
+                        VStack(spacing: 2) {
+                            Image(nsImage: MenuBarIcon.image(state: state, frame: 1)).renderingMode(.template)
+                                .scaleEffect(1.4).frame(width: 30, height: 26)
+                            Text(label).font(.caption2).foregroundStyle(.secondary)
                         }
-                        Text(style.blurb).font(.caption).foregroundStyle(.secondary)
                     }
-                    .padding(.vertical, 2)
-                    .opacity(style == model.iconStyle ? 1 : 0.6)
                 }
+                Text("A plain frame with a line that sweeps while naming.").font(.caption).foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)

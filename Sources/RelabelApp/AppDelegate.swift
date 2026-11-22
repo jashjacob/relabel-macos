@@ -103,10 +103,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         let state = model.status.iconState
         let animate = state == .naming && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         let frame = animate ? model.tick : 0
-        let key = "\(model.iconStyle.rawValue)|\(state)|\(frame)|\(model.isDraggingFile)|\(model.status.title)"
+        let key = "\(state)|\(frame)|\(model.isDraggingFile)|\(model.status.title)"
         guard key != lastIconKey else { return }
         lastIconKey = key
-        b.image = MenuBarFace.image(style: model.iconStyle, state: state, frame: frame, dragging: model.isDraggingFile)
+        b.image = MenuBarIcon.image(state: state, frame: frame, dragging: model.isDraggingFile)
         b.setAccessibilityLabel(model.status.accessibilityLabel)
     }
 
