@@ -21,6 +21,13 @@ enum NamingQualityChecks {
         check(TitleCheck.trimmed("a b c d e f g h i j k l m", length: .short).split(separator: " ").count == 8, "trimmed to the cap")
         check(TitleCheck.trimmed("Attention Is Not Enough Sparse Routing for Long Context", length: .short) == "Attention Is Not Enough Sparse Routing", "trim cuts at a natural break")
         check(Sanitizer.restoreProperNames("Northwind traders invoice #4471", source: "NORTHWIND TRADERS\nINVOICE #4471") == "Northwind Traders invoice #4471", "all-caps company name restored")
+        check(Sanitizer.calmCaps("ACME AUTOMATION SYSTEMS PVT.LTD quotation") == "Acme Automation Systems quotation", "caps company calmed")
+        check(Sanitizer.calmCaps("Travel Visa application LARSEN") == "Travel Visa application Larsen", "caps surname calmed")
+        check(Sanitizer.calmCaps("CNC retrofit for HVAC") == "CNC retrofit for HVAC", "short acronyms kept")
+        check(Sanitizer.restoreIdentifiers("Delivery Challan d0457", source: "Delivery Challan# D0457") == "Delivery Challan D0457", "identifier case restored")
+        check(RuleNamer.name(for: "NOVA CONTROL SYSTEMS PVT. LTD\nNo.40/A\nQuotation Nr.: 5520193\nCustomer: ACME AUTOMATION SYSTEMS PVT.LTD", length: .standard)?.title == "Nova Control Systems quotation 5520193", "quotation Nr: \(RuleNamer.name(for: "NOVA CONTROL SYSTEMS PVT. LTD\nQuotation Nr.: 5520193", length: .standard)?.title ?? "nil")")
+        check(RuleNamer.name(for: "CITY WATER BOARD\nTender for supply of PIPE FITTINGS\nTender No.: CWB/STORES-U2 PURCHASE/TW202400731905 dated 14-03-\n2024", length: .standard)?.title == "Tender TW202400731905", "tender id")
+        check(RuleNamer.name(for: "ACME | AUTOMATION\nDelivery Challan\nAcme Automation Systems Pvt. Ltd.\nDelivery Challan# D0457", length: .standard)?.title == "Acme Automation Systems delivery challan D0457", "delivery challan")
         check(Sanitizer.restoreProperNames("Flights to kochi", source: "Indore to Kochi\\nFlights to Kochi today") == "Flights to Kochi", "place name capital restored")
     }
 

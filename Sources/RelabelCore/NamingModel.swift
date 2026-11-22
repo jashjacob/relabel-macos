@@ -145,6 +145,7 @@ public enum NamingModel {
                                                          options: GenerationOptions(sampling: .greedy))
                 var title = Sanitizer.restoreAcronyms(Sanitizer.sentenceCased(Sanitizer.cleanTitle(response.content.title)), source: ctx.text)
                 title = Sanitizer.restoreProperNames(TitleCheck.stripped(title), source: ctx.text)
+                title = Sanitizer.restoreIdentifiers(Sanitizer.calmCaps(title), source: ctx.text)
                 if ctx.kind == .screenshot, let contact = ChatFacts.contact(in: ctx.text) { title = ChatFacts.finalTitle(title, contact: contact) }
                 guard !title.isEmpty else { return (basic, "No better name found. Used basic naming.") }
                 let problem = TitleCheck.problem(title, length: prefs.length, sourceText: ctx.text)

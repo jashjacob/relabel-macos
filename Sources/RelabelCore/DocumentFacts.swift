@@ -28,17 +28,28 @@ extension RuleNamer {
 
     // MARK: Invoices
 
-    static let companyWords = #"\b(?:Ltd|Limited|LLC|Inc|Corp|Corporation|Pvt|GmbH|Co|Company|Services|Plumbing|Industries|Enterprises)\b"#
+    static let companyWords = #"\b(?:Ltd|LTD|Limited|LIMITED|LLC|Inc|INC|Corp|Corporation|Pvt|PVT|GmbH|Co|Company|Services|Plumbing|Industries|Enterprises)\b"#
 
     /// "ACME Plumbing invoice INV-20481": a company line, the word invoice (or quotation, receipt) and its number.
     static func invoice(_ text: String) -> String? {
-        let kinds = "Invoice|Tax Invoice|Quotation|Quote|Receipt|Purchase Order|PO"
-        guard let re = try? NSRegularExpression(pattern: "\\b(\(kinds))\\s*(?:(?i:No\\.?|Number)|#)?\\s*[:#]?\\s*((?=[A-Z0-9\\-/]*\\d)[A-Z0-9][A-Z0-9\\-/]{2,})"),
+        let kinds = "Invoice|Tax Invoice|Quotation|Quote|Receipt|Purchase Order|PO|Delivery Note|DELIVERY NOTE|Delivery Challan|DELIVERY CHALLAN"
+        guard let re = try? NSRegularExpression(pattern: "\\b(\(kinds))\\s*(?:(?i:No\\.?|Nr\\.?|Number)|#)?\\s*[:#]?\\s*((?=[A-Z0-9\\-/]*\\d)[A-Z0-9][A-Z0-9\\-/]{2,})"),
               let company = companyLine(in: text) else { return nil }
         let ns = text as NSString
         guard let m = re.firstMatch(in: text, range: NSRange(location: 0, length: ns.length)) else { return nil }
         let kind = ns.substring(with: m.range(at: 1)).lowercased(), id = ns.substring(with: m.range(at: 2))
         return "\(company) \(kind) \(id)"
+    }
+
+    // MARK: Tenders
+
+    /// "Tender TW202400731905" from a line like "Tender No: ORG/UNIT/TW202400731905 dated 29-11-2022".
+    static func tender(_ text: String) -> String? {
+        guard let line = firstMatch(#"Tender\s*(?:No\.?|Number)\s*:?\s*([^\n]+)"#, in: text, options: [.caseInsensitive]) else { return nil }
+        let head = line.components(separatedBy: " dated").first ?? line
+        let ids = head.split(whereSeparator: { $0 == "/" || $0 == " " }).map(String.init)
+            .filter { $0.filter(\.isNumber).count >= 6 && $0.allSatisfy { $0.isLetter || $0.isNumber || $0 == "-" } }
+        return ids.last.map { "Tender \($0)" }
     }
 
     // MARK: Headings

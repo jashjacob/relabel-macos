@@ -89,6 +89,36 @@ public enum Sanitizer {
         return out.joined(separator: " ")
     }
 
+    private static let keepShouting: Set<String> = ["EBITDA", "HTTPS", "GSTIN", "SWIFT", "IFSC"]
+
+    /// ALL CAPS company and person names the model copied ("ACME AUTOMATION SYSTEMS", "LARSEN") become Title Case.
+    /// Short acronyms (CNC, HVAC) stay. Legal suffixes like "PVT.LTD" are dropped.
+    public static func calmCaps(_ title: String) -> String {
+        let t = title.replacingOccurrences(of: #"(?i)\s*\bPvt\.?\s*Ltd\.?"#, with: "", options: .regularExpression)
+        let words = t.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
+        func shouts(_ w: String) -> Bool { w == w.uppercased() && !w.contains(where: \.isNumber) && w.filter(\.isLetter).count >= 4 && !keepShouting.contains(w) }
+        let many = words.filter(shouts).count >= 2
+        return words.map { w in
+            guard shouts(w), w.filter(\.isLetter).count >= 5 || many else { return w }
+            return w.prefix(1) + w.dropFirst().lowercased()
+        }.joined(separator: " ")
+    }
+
+    /// Codes with digits ("D0457") the model wrote in lower case get the case the source has.
+    public static func restoreIdentifiers(_ title: String, source: String) -> String {
+        var ids: [String: String] = [:]
+        for raw in source.split(whereSeparator: { $0.isWhitespace || "#:,;()|".contains($0) }) {
+            let w = String(raw)
+            if w.contains(where: \.isNumber), w.contains(where: \.isLetter) { ids[w.lowercased()] = w }
+        }
+        guard !ids.isEmpty else { return title }
+        return title.split(separator: " ", omittingEmptySubsequences: false).map { word -> String in
+            let w = String(word)
+            if let id = ids[w.lowercased()], w != id { return id }
+            return w
+        }.joined(separator: " ")
+    }
+
     public static func dateString(_ date: Date, calendar: Calendar = .current) -> String {
         let c = calendar.dateComponents([.year, .month, .day], from: date)
         return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
