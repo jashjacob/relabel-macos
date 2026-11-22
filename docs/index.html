@@ -128,6 +128,15 @@ footer .big2{font:600 28px var(--serif);color:var(--ink);margin-bottom:6px}
 .js .rv{opacity:0;transform:translateY(26px);transition:opacity .7s ease,transform .7s ease;transition-delay:var(--d,0s)}
 .js .rv.in{opacity:1;transform:none}
 @media(prefers-reduced-motion:reduce){.js .rv{opacity:1;transform:none}}
+
+.mock{margin-top:16px;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:11px 12px;font:12.5px/1.5 var(--mono);color:var(--ink);overflow:hidden}
+.mock .o{color:var(--ink-2);text-decoration:line-through;text-decoration-color:#c9c2ae}
+.mock .a{color:var(--ink)} .mock .ar{color:var(--scan);padding:0 4px}
+.mock .ln{display:flex;gap:8px;align-items:baseline;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mock .ln + .ln{margin-top:3px} .mock .k{color:var(--ink-2);font:11.5px var(--sans)}
+.mock .u{color:var(--scan);font:600 12px var(--sans)}
+.mock .drop{border:1.5px dashed #c9c2ae;border-radius:8px;padding:9px 10px;margin-bottom:8px;color:var(--ink-2)}
+.mock .term{color:var(--ink-2)}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
 </style>
 </head>
@@ -206,12 +215,12 @@ grep -rE "URLSession|NWConnection|CFNetwork" Sources</code>
     <h2>Small things that matter</h2>
     <p class="sub">The boring parts are done carefully, because it is renaming your files.</p>
     <div class="grid g3">
-      <div class="card"><h3>Undo and redo, always</h3><p>Every rename is in a recent list. Undo it, redo it, or fix the name right there.</p></div>
-      <div class="card"><h3>Tidy Up a whole folder</h3><p>Preview new names for a messy Downloads folder first. Nothing changes until you say so.</p></div>
-      <div class="card"><h3>Learns your style</h3><p>Rename a few files your way and it starts to follow. That lives on your Mac, and Forget Everything wipes it.</p></div>
-      <div class="card"><h3>Drop files on it</h3><p>Drag a file onto the menu bar icon, the panel or the app icon. Or use Open With.</p></div>
-      <div class="card"><h3>Gets out of the way</h3><p>Pauses in Low Power Mode, backs off when your Mac runs hot, and says so plainly when it can't name something.</p></div>
-      <div class="card"><h3>Has a command line</h3><p><code style="font:14px var(--mono)">relabel tidy ~/Downloads --dry-run</code> for people who live in the terminal.</p></div>
+      <div class="card"><h3>Undo and redo, always</h3><p>Every rename is in a recent list. Undo it, redo it, or fix the name right there.</p><div class="mock" aria-hidden="true"><div class="ln"><span class="a">Lease Agreement Maple Court.pdf</span><span class="u">Undo</span></div><div class="ln"><span class="k">after Undo</span><span class="a">Document1.pdf</span></div></div></div>
+      <div class="card"><h3>Tidy Up a whole folder</h3><p>Preview new names for a messy Downloads folder first. Nothing changes until you say so.</p><div class="mock" aria-hidden="true"><div class="ln"><span class="o">download (3).pdf</span><span class="ar">→</span><span class="a">Q3 2026 Sales Report.pdf</span></div><div class="ln"><span class="o">IMG_4821.png</span><span class="ar">→</span><span class="a">Hotels in Goa from ₹3,150.png</span></div><div class="ln"><span class="k">Preview first. Nothing changes until you apply.</span></div></div></div>
+      <div class="card"><h3>Learns your style</h3><p>Rename a few files your way and it starts to follow. That lives on your Mac, and Forget Everything wipes it.</p><div class="mock" aria-hidden="true"><div class="ln"><span class="o">Chat with Priya about dinner</span></div><div class="ln"><span class="k">you edit it to</span><span class="a">Priya · dinner</span></div><div class="ln"><span class="k">next time</span><span class="a">Rahul · trip plans</span></div></div></div>
+      <div class="card"><h3>Drop files on it</h3><p>Drag a file onto the menu bar icon, the panel or the app icon. Or use Open With.</p><div class="mock" aria-hidden="true"><div class="drop">Scan_0031.pdf ↓</div><div class="ln"><span class="a">Northwind invoice 4471.pdf</span></div></div></div>
+      <div class="card"><h3>Gets out of the way</h3><p>Pauses in Low Power Mode, backs off when your Mac runs hot, and says so plainly when it can't name something.</p><div class="mock" aria-hidden="true"><div class="ln"><span class="k">Low Power Mode</span><span class="a">Paused</span></div><div class="ln"><span class="k">Mac running hot</span><span class="a">Backing off</span></div><div class="ln"><span class="k">no text found</span><span class="a">Says so plainly</span></div></div></div>
+      <div class="card"><h3>Has a command line</h3><p><code style="font:14px var(--mono)">relabel tidy ~/Downloads --dry-run</code> for people who live in the terminal.</p><div class="mock" aria-hidden="true"><div class="ln term">$ relabel tidy ~/Downloads --dry-run</div><div class="ln"><span class="o">download (3).pdf</span><span class="ar">→</span><span class="a">Lease Agreement…pdf</span></div></div></div>
     </div>
   </section>
 
