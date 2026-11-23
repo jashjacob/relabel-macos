@@ -97,9 +97,11 @@ public enum Sanitizer {
         let t = title.replacingOccurrences(of: #"(?i)\s*\bPvt\.?\s*Ltd\.?"#, with: "", options: .regularExpression)
         let words = t.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
         func shouts(_ w: String) -> Bool { w == w.uppercased() && !w.contains(where: \.isNumber) && w.filter(\.isLetter).count >= 4 && !keepShouting.contains(w) }
-        let many = words.filter(shouts).count >= 2
+        // A 4-letter capital word ("ACME") is calmed only next to a longer one in the same shouted name
+        // ("ACME AUTOMATION"), so two acronyms side by side ("ISRO HVAC") stay as they are.
+        let longShout = words.contains { shouts($0) && $0.filter(\.isLetter).count >= 5 }
         return words.map { w in
-            guard shouts(w), w.filter(\.isLetter).count >= 5 || many else { return w }
+            guard shouts(w), w.filter(\.isLetter).count >= 5 || longShout else { return w }
             return w.prefix(1) + w.dropFirst().lowercased()
         }.joined(separator: " ")
     }

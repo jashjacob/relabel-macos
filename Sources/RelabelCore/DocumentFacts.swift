@@ -77,7 +77,7 @@ extension RuleNamer {
         }.joined(separator: " ")
         let line = text.split(whereSeparator: \.isNewline).prefix(10).joined(separator: "\n")
         let company = text.range(of: #"(?m)^\s*(?:M/s|Messrs)"#, options: .regularExpression) != nil ? companyLine(in: line) : nil
-        return company.map { "\($0) \(body)" } ?? Sanitizer.sentenceCased(body)
+        return TitleCheck.trimmed(company.map { "\($0) \(body)" } ?? Sanitizer.sentenceCased(body), length: length)
     }
 
     // MARK: Headings

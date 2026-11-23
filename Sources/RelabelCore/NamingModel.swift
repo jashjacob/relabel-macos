@@ -73,7 +73,8 @@ public enum NamingModel {
         - Never invent details that are not in the text you are given.
         - No punctuation, no file extension, no quotes, no dates.
         - Keep numbers, years and reference numbers as digits, exactly as written.
-        - Keep acronyms, company, person and product names and reference numbers exactly as written in the text (CNC stays CNC). Other words are lower case, except the first word.
+        - Keep acronyms and reference numbers exactly as written in the text (CNC stays CNC).
+        - Write company, person and product names with normal capitals even when the text shouts them (ACME AUTOMATION SYSTEMS becomes Acme Automation Systems). Other words are lower case, except the first word.
         - Screenshots are often cropped, so words at the edges may be cut off. Ignore fragments and use the full words and the overall subject.
         - Name the whole subject of the file, not one line of it.
         - Use plain words in the same language as the text.
@@ -102,12 +103,12 @@ public enum NamingModel {
         } else {
             if let t = ctx.pdfTitle, BasicNamer.isUsefulTitle(t) { p += "PDF title metadata: \(t)\n" }
             if let a = ctx.pdfAuthor { p += "PDF author metadata: \(a)\n" }
-            if let d = ctx.pdfCreated { p += "PDF created: \(Sanitizer.dateString(d))\n" }
-            let stem = (ctx.originalName as NSString).deletingPathExtension
-            if stem.split(whereSeparator: { !$0.isLetter }).contains(where: { $0.count >= 4 }), stem.filter(\.isNumber).count < stem.count / 2 {
-                p += "Original file name (only a hint about what it is, never copy it as the title): \(stem)\n"
+            if ctx.text.range(of: #"(?im)^\s*(?:Dear\s|Sub(?:ject)?\s*:)"#, options: .regularExpression) != nil {
+                p += "This looks like a letter. Name it by its subject, not by a year or reference number.\n"
             }
-            p += "A letter is named by its subject (the Sub: line), not by a year or reference number. A product catalogue is a catalogue, not a manual.\n"
+            if (ctx.originalName + " " + ctx.text.prefix(600)).range(of: "catalog", options: .caseInsensitive) != nil {
+                p += "This looks like a product catalogue. Call it a catalogue, not a manual.\n"
+            }
             let custom = prefs.customPDFInstruction.trimmingCharacters(in: .whitespacesAndNewlines)
             if !custom.isEmpty { p += "Extra instruction from the user: \(custom)\n" }
         }
@@ -164,13 +165,57 @@ public enum NamingModel {
                 feedback = "Your previous title \"\(title)\" was rejected because \(problem). Write a better one from the same facts."
             } catch {
                 lastError = error
+                if ProcessInfo.processInfo.environment["RELABEL_DEBUG"] != nil {
+                    FileHandle.standardError.write(Data("model error: \(String(reflecting: error))\n".utf8))
+                }
+                // Sampling is greedy, so the same prompt fails the same way: only a busy model is worth asking again.
+                guard isTransient(error) else { break }
                 if attempt == 0 { try? await Task.sleep(for: .seconds(1.5)) }     // busy? give it a moment, then once more
             }
         }
         if let best {
             return (NamingResult(title: TitleCheck.trimmed(best.title, length: prefs.length), category: best.category, source: .model), nil)
         }
-        _ = lastError
-        return (basic, "Apple Intelligence is busy, try again. Used basic naming this time.")
+        return (basic, failureNote(lastError))
+    }
+
+    enum Failure { case busy, refused, tooLong, language, other }
+
+    /// Sorts a model error. macOS 27 throws `LanguageModelError`, `LanguageModelSession.Error` and
+    /// `SystemLanguageModel.Error`; the older `GenerationError` is still matched in case it turns up.
+    static func failure(_ error: Error?) -> Failure {
+        switch error {
+        case let e as LanguageModelError:
+            switch e {
+            case .rateLimited, .timeout: return .busy
+            case .guardrailViolation, .refusal: return .refused
+            case .contextSizeExceeded: return .tooLong
+            case .unsupportedLanguageOrLocale: return .language
+            default: return .other
+            }
+        case is LanguageModelSession.Error, is SystemLanguageModel.Error: return .busy
+        case let e as LanguageModelSession.GenerationError:
+            switch e {
+            case .rateLimited, .concurrentRequests, .assetsUnavailable: return .busy
+            case .guardrailViolation, .refusal: return .refused
+            case .exceededContextWindowSize: return .tooLong
+            case .unsupportedLanguageOrLocale: return .language
+            default: return .other
+            }
+        default: return .busy
+        }
+    }
+
+    static func isTransient(_ error: Error?) -> Bool { failure(error) == .busy }
+
+    /// What the menu shows when the model gave no name, in plain words.
+    static func failureNote(_ error: Error?) -> String {
+        switch failure(error) {
+        case .busy: "Apple Intelligence is busy, try again. Used basic naming this time."
+        case .refused: "Apple Intelligence wouldn't name this file. Used basic naming."
+        case .tooLong: "This file has too much text for Apple Intelligence. Used basic naming."
+        case .language: "Apple Intelligence doesn't support this language yet. Used basic naming."
+        case .other: "Apple Intelligence couldn't name this file. Used basic naming."
+        }
     }
 }
