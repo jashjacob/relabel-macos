@@ -103,6 +103,11 @@ public enum NamingModel {
             if let t = ctx.pdfTitle, BasicNamer.isUsefulTitle(t) { p += "PDF title metadata: \(t)\n" }
             if let a = ctx.pdfAuthor { p += "PDF author metadata: \(a)\n" }
             if let d = ctx.pdfCreated { p += "PDF created: \(Sanitizer.dateString(d))\n" }
+            let stem = (ctx.originalName as NSString).deletingPathExtension
+            if stem.split(whereSeparator: { !$0.isLetter }).contains(where: { $0.count >= 4 }), stem.filter(\.isNumber).count < stem.count / 2 {
+                p += "Original file name (only a hint about what it is, never copy it as the title): \(stem)\n"
+            }
+            p += "A letter is named by its subject (the Sub: line), not by a year or reference number. A product catalogue is a catalogue, not a manual.\n"
             let custom = prefs.customPDFInstruction.trimmingCharacters(in: .whitespacesAndNewlines)
             if !custom.isEmpty { p += "Extra instruction from the user: \(custom)\n" }
         }
@@ -146,6 +151,11 @@ public enum NamingModel {
                 var title = Sanitizer.restoreAcronyms(Sanitizer.sentenceCased(Sanitizer.cleanTitle(response.content.title)), source: ctx.text)
                 title = Sanitizer.restoreProperNames(TitleCheck.stripped(title), source: ctx.text)
                 title = Sanitizer.restoreIdentifiers(Sanitizer.calmCaps(title), source: ctx.text)
+                if ctx.kind == .pdf, title.lowercased().hasSuffix(" manual"),
+                   (ctx.originalName + " " + ctx.text).range(of: "catalog", options: .caseInsensitive) != nil,
+                   ctx.text.range(of: "manual", options: .caseInsensitive) == nil {
+                    title = String(title.dropLast(6)) + "catalogue"
+                }
                 if ctx.kind == .screenshot, let contact = ChatFacts.contact(in: ctx.text) { title = ChatFacts.finalTitle(title, contact: contact) }
                 guard !title.isEmpty else { return (basic, "No better name found. Used basic naming.") }
                 let problem = TitleCheck.problem(title, length: prefs.length, sourceText: ctx.text)

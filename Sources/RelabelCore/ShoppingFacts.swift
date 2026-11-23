@@ -13,6 +13,7 @@ public enum RuleNamer {
         if let t = nameplate(text, length: length) { return Named(title: t, category: "label") }
         if let t = invoice(text) { return Named(title: t, category: "invoice") }
         if let t = tender(text) { return Named(title: t, category: "document") }
+        if let t = letter(text, length: length) { return Named(title: t, category: "letter") }
         if let t = heading(text) { return Named(title: t, category: "document") }
         return nil
     }

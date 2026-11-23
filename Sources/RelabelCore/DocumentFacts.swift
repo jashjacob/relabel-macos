@@ -33,11 +33,15 @@ extension RuleNamer {
     /// "ACME Plumbing invoice INV-20481": a company line, the word invoice (or quotation, receipt) and its number.
     static func invoice(_ text: String) -> String? {
         let kinds = "Invoice|Tax Invoice|Quotation|Quote|Receipt|Purchase Order|PO|Delivery Note|DELIVERY NOTE|Delivery Challan|DELIVERY CHALLAN"
+        // A letter that merely mentions a purchase order is named by its subject, not by the order number.
+        if text.range(of: #"(?im)^\s*(?:Sub|Subject)\s*:"#, options: .regularExpression) != nil { return nil }
         guard let re = try? NSRegularExpression(pattern: "\\b(\(kinds))\\s*(?:(?i:No\\.?|Nr\\.?|Number)|#)?\\s*[:#]?\\s*((?=[A-Z0-9\\-/]*\\d)[A-Z0-9][A-Z0-9\\-/]{2,})"),
               let company = companyLine(in: text) else { return nil }
         let ns = text as NSString
         guard let m = re.firstMatch(in: text, range: NSRange(location: 0, length: ns.length)) else { return nil }
-        let kind = ns.substring(with: m.range(at: 1)).lowercased(), id = ns.substring(with: m.range(at: 2))
+        var kind = ns.substring(with: m.range(at: 1)).lowercased()
+        if kind == "po" { kind = "PO" }
+        let id = ns.substring(with: m.range(at: 2)).replacingOccurrences(of: "/", with: "-")
         return "\(company) \(kind) \(id)"
     }
 
@@ -45,11 +49,35 @@ extension RuleNamer {
 
     /// "Tender TW202400731905" from a line like "Tender No: ORG/UNIT/TW202400731905 dated 29-11-2022".
     static func tender(_ text: String) -> String? {
-        guard let line = firstMatch(#"Tender\s*(?:No\.?|Number)\s*:?\s*([^\n]+)"#, in: text, options: [.caseInsensitive]) else { return nil }
+        // A letter that only refers to a tender is not the tender; and the number has letters ("TW2024...", not "2024-25").
+        guard text.range(of: #"(?i)\bDear\s+(?:Sir|Madam|Mr|Ms|Sirs)"#, options: .regularExpression) == nil,
+              let line = firstMatch(#"Tender\s*(?:No\.?|Number)\s*:?\s*([^\n]+)"#, in: text, options: [.caseInsensitive]) else { return nil }
         let head = line.components(separatedBy: " dated").first ?? line
         let ids = head.split(whereSeparator: { $0 == "/" || $0 == " " }).map(String.init)
-            .filter { $0.filter(\.isNumber).count >= 6 && $0.allSatisfy { $0.isLetter || $0.isNumber || $0 == "-" } }
+            .filter { $0.filter(\.isNumber).count >= 6 && $0.contains(where: \.isLetter) && $0.allSatisfy { $0.isLetter || $0.isNumber || $0 == "-" } }
         return ids.last.map { "Tender \($0)" }
+    }
+
+    // MARK: Letters
+
+    /// "Northfield Aero site visit request for engineers": a letter with a "Dear Sir" greeting and a Sub: line.
+    static func letter(_ text: String, length: NameLength) -> String? {
+        guard text.range(of: #"(?i)\bDear\s+(?:Sir|Madam|Mr|Ms|Sirs)"#, options: .regularExpression) != nil,
+              var subject = firstMatch(#"(?im)^\s*(?:Sub|Subject)\s*[:\-]\s*(.+)$"#, in: text) else { return nil }
+        subject = subject.trimmingCharacters(in: CharacterSet(charactersIn: ". "))
+        let words = subject.split(separator: " ").count
+        guard subject.range(of: #"(?i)^ref\b|\bno\s*:"#, options: .regularExpression) == nil else { return nil }
+        guard (2...25).contains(words) else { return nil }
+        let plain = subject.replacingOccurrences(of: "/", with: " and ")
+        let short = limitWords(cleanName(plain), length == .short ? 5 : 8)
+        // "Site Visit Request For Engineers" in Title Case reads better as a sentence: lower the Capitalised words.
+        let body = short.split(separator: " ").map { w -> String in
+            let x = String(w)
+            return x.count > 1 && x == x.capitalized ? x.lowercased() : x
+        }.joined(separator: " ")
+        let line = text.split(whereSeparator: \.isNewline).prefix(10).joined(separator: "\n")
+        let company = text.range(of: #"(?m)^\s*(?:M/s|Messrs)"#, options: .regularExpression) != nil ? companyLine(in: line) : nil
+        return company.map { "\($0) \(body)" } ?? Sanitizer.sentenceCased(body)
     }
 
     // MARK: Headings
@@ -81,6 +109,7 @@ extension RuleNamer {
             let cell = l.components(separatedBy: OCRRows.separator).last(where: { $0.range(of: companyWords, options: .regularExpression) != nil }) ?? ""
             guard !cell.isEmpty, let r = cell.range(of: companyWords, options: .regularExpression) else { continue }
             var name = String(cell[..<r.lowerBound]).trimmingCharacters(in: .punctuationCharacters.union(.whitespaces))
+            if let m = name.range(of: #"^(?i:M/s|Messrs)\.?\s+"#, options: .regularExpression) { name.removeSubrange(m) }
             if name.isEmpty { continue }
             // Services/Plumbing/Industries are part of the name; legal suffixes are not.
             let w = String(cell[r])
