@@ -144,13 +144,19 @@ case "eval":
         print("Can't read \(casesURL.path)"); exit(1)
     }
     let root = casesURL.deletingLastPathComponent().deletingLastPathComponent()
+    // Cases for your own files live in Samples/cases.json, which is git-ignored and never leaves your Mac.
+    struct LocalFile: Decodable { var cases: [EvalCase] }
+    var cases = file.cases
+    if let d = try? Data(contentsOf: root.appendingPathComponent("Samples/cases.json")), let extra = try? JSONDecoder().decode(LocalFile.self, from: d) {
+        cases += extra.cases
+    }
     let dirs = ["Evals/images", "Samples", "Fixtures"].map { root.appendingPathComponent($0) }
     let textOnly = args.contains("--text-only")
     print("Warming up text recognition...")
     await TextExtractor.warmUp()
     var passed = 0, ran = 0
     let only = option("--only")
-    for c in file.cases where only == nil || c.match.contains(only!) {
+    for c in cases where only == nil || c.match.contains(only!) {
         let found = dirs.compactMap { try? FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) }
             .flatMap { $0 }.first { $0.lastPathComponent.contains(c.match) }
         guard let url = found else { print("SKIP   \(c.match) (file not found)"); continue }

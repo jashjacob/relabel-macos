@@ -1,7 +1,6 @@
 {
   "ui": ["select", "click", "button", "menu", "screen", "screenshot", "interface", "image", "deals", "untitled"],
   "cases": [
-    {"match": "skylark-flights", "must": [["SkyLark"], ["IDR", "Indore"], ["COK", "Kochi"]]},
     {"match": "flights-pune-mumbai", "must": [["Air Meridian", "flights"], ["PNQ", "Pune"], ["BOM", "Mumbai"]]},
     {"match": "chat-dinner-plans", "must": [["Priya"], ["dinner"]]},
     {"match": "xcode-build-error", "must": [["Xcode", "Build"], ["fetchUserName"]]},
@@ -19,9 +18,6 @@
     {"match": "paper-sparse-routing.pdf", "must": [["Attention"], ["routing"]]},
     {"match": "report-q3-sales.pdf", "must": [["Q3"], ["sales"]]},
     {"match": "invoice-scanned.pdf", "must": [["Northwind"], ["invoice"], ["4471", "320"]]},
-    {"match": "Screenshot 2026-11-19 at 10.15.00", "must": [["budget"], ["2027"]]},
-    {"match": "Screenshot 2026-11-19 at 10.15.00", "must": [["budget"], ["2027"]]},
-    {"match": "Screenshot 2026-11-19 at 10.15.00", "must": [["budget"], ["2027"]]},
     {"match": "Screenshot 2026-11-19 at 10.15.00", "must": [["budget"], ["2027"]]}
   ]
 }
